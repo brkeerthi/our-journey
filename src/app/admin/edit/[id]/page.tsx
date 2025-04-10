@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useDropzone } from 'react-dropzone'
 import { Spinner } from '@/components/ui/spinner'
 import ImageWithFallback from '@/components/ImageWithFallback'
 import Link from 'next/link'
+import { use } from 'react'
 
 interface MediaPreview {
   file: File
@@ -14,16 +15,68 @@ interface MediaPreview {
   type: 'image' | 'video'
 }
 
-export default function NewMemoryPage() {
+interface ExistingMedia {
+  id: string
+  url: string
+  type: 'image' | 'video'
+}
+
+interface PageProps {
+  params: Promise<{ id: string }>
+}
+
+export default function EditMemoryPage({ params }: PageProps) {
+  const { id } = use(params)
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
   const [files, setFiles] = useState<MediaPreview[]>([])
+  const [existingMedia, setExistingMedia] = useState<ExistingMedia[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    const fetchMemory = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/admin/login')
+        return
+      }
+
+      const { data: memory, error: memoryError } = await supabase
+        .from('memories')
+        .select('*, media(*)')
+        .eq('id', id)
+        .single()
+
+      if (memoryError) {
+        console.error('Error fetching memory:', memoryError)
+        setError('Failed to fetch memory details')
+        return
+      }
+
+      if (!memory) {
+        setError('Memory not found')
+        return
+      }
+
+      setTitle(memory.title)
+      setDescription(memory.description)
+      setDate(memory.date)
+      setLocation(memory.location)
+      setExistingMedia(memory.media.map((m: { id: string; url: string; type: 'image' | 'video' }) => ({
+        id: m.id,
+        url: m.url,
+        type: m.type
+      })))
+    }
+
+    fetchMemory()
+  }, [id, router, supabase])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
@@ -51,6 +104,60 @@ export default function NewMemoryPage() {
     })
   }
 
+  const removeExistingMedia = async (mediaId: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('media')
+        .delete()
+        .eq('id', mediaId)
+
+      if (deleteError) throw deleteError
+
+      setExistingMedia(prev => prev.filter(m => m.id !== mediaId))
+    } catch (err) {
+      console.error('Error removing media:', err)
+      setError('Failed to remove media')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
+      return
+    }
+
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      // Delete all media records first
+      const { error: mediaDeleteError } = await supabase
+        .from('media')
+        .delete()
+        .eq('memory_id', id)
+
+      if (mediaDeleteError) throw mediaDeleteError
+
+      // Delete the memory
+      const { error: memoryDeleteError } = await supabase
+        .from('memories')
+        .delete()
+        .eq('id', id)
+
+      if (memoryDeleteError) throw memoryDeleteError
+
+      router.push('/admin')
+    } catch (err) {
+      console.error('Error deleting memory:', err)
+      setError(
+        err instanceof Error 
+          ? err.message 
+          : 'Failed to delete memory. Please try again.'
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -64,64 +171,75 @@ export default function NewMemoryPage() {
         return
       }
 
-      // Create memory
-      const { data: memory, error: memoryError } = await supabase
+      // Update memory
+      const updateData = {
+        title,
+        description,
+        date,
+        location,
+        user_id: user.id
+      }
+
+      console.log('Updating memory with data:', updateData)
+
+      const { data: updateResult, error: memoryError } = await supabase
         .from('memories')
-        .insert({
-          title,
-          description,
-          date,
-          location,
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        })
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id)
         .select()
-        .single()
 
       if (memoryError) {
-        console.error('Memory creation error:', memoryError)
-        throw new Error(memoryError.message)
+        console.error('Memory update error:', memoryError)
+        throw new Error(memoryError.message || 'Failed to update memory')
       }
 
-      if (!memory) {
-        throw new Error('Memory creation failed - no data returned')
+      if (!updateResult || updateResult.length === 0) {
+        throw new Error('Failed to update memory - no rows affected')
       }
 
-      console.log('Memory created:', memory)
+      console.log('Memory updated successfully:', updateResult)
 
-      // Upload media files
+      // Upload new media files
       if (files.length > 0) {
         for (const file of files) {
           try {
             const fileExt = file.file.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-            const filePath = `${memory.id}/${fileName}`
+            const filePath = `${id}/${fileName}`
 
             console.log('Uploading file:', fileName)
 
             // Upload file to storage
             const { error: uploadError } = await supabase.storage
               .from('memories')
-              .upload(filePath, file.file)
+              .upload(filePath, file.file, {
+                cacheControl: '3600',
+                upsert: false
+              })
 
-            if (uploadError) throw uploadError
-
-            console.log('File uploaded successfully:', filePath)
+            if (uploadError) {
+              console.error('File upload error:', uploadError)
+              throw uploadError
+            }
 
             // Create media record
             const { error: mediaError } = await supabase
               .from('media')
               .insert({
-                memory_id: memory.id,
+                memory_id: id,
                 url: filePath,
                 type: file.type,
                 created_at: new Date().toISOString(),
                 user_id: user.id
               })
 
-            if (mediaError) throw mediaError
+            if (mediaError) {
+              console.error('Media record creation error:', mediaError)
+              throw mediaError
+            }
 
-            console.log('Media record created for:', filePath)
+            console.log('File uploaded and media record created successfully')
           } catch (err) {
             console.error('Error processing file:', file.file.name, err)
             throw err
@@ -134,13 +252,25 @@ export default function NewMemoryPage() {
         URL.revokeObjectURL(file.preview)
       })
 
-      router.push('/admin')
+      // Revalidate and redirect
+      try {
+        // Revalidate both the admin and main pages
+        await fetch('/api/revalidate?path=/admin')
+        await fetch('/api/revalidate?path=/')
+        
+        // Force a hard navigation to refresh the data
+        window.location.href = '/admin'
+      } catch (revalidateError) {
+        console.error('Error revalidating pages:', revalidateError)
+        // Still redirect even if revalidation fails
+        window.location.href = '/admin'
+      }
     } catch (err) {
-      console.error('Error creating memory:', err)
+      console.error('Error updating memory:', err)
       setError(
         err instanceof Error 
           ? err.message 
-          : 'Failed to create memory. Please try again.'
+          : 'Failed to update memory. Please try again.'
       )
     } finally {
       setIsSubmitting(false)
@@ -167,15 +297,6 @@ export default function NewMemoryPage() {
               </svg>
               Dashboard
             </Link>
-            <Link
-              href="/admin/new"
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-900 bg-gray-50 rounded-lg"
-            >
-              <svg className="mr-3 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create Memory
-            </Link>
           </nav>
 
           <div className="p-4 border-t border-gray-100">
@@ -196,8 +317,8 @@ export default function NewMemoryPage() {
       <div className="pl-16 w-full">
         <div className="p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Create New Memory</h2>
-            <p className="mt-1 text-sm text-gray-500">Add a new memory to your journey.</p>
+            <h2 className="text-2xl font-semibold text-gray-900">Edit Memory</h2>
+            <p className="mt-1 text-sm text-gray-500">Update your memory details.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -269,11 +390,49 @@ export default function NewMemoryPage() {
               </div>
             </div>
 
+            {/* Existing Media */}
+            {existingMedia.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-100 p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-4">
+                  Existing Media
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  {existingMedia.map((media) => (
+                    <div key={media.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                      {media.type === 'video' ? (
+                        <video
+                          src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
+                          className="w-full h-full object-cover"
+                          controls
+                        />
+                      ) : (
+                        <ImageWithFallback
+                          src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
+                          alt="Memory"
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeExistingMedia(media.id)}
+                        className="absolute top-2 right-2 p-1.5 bg-white bg-opacity-75 text-gray-900 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Media Upload */}
             <div className="bg-white rounded-xl border border-gray-100 p-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Media
+                  Add New Media
                 </label>
                 <div
                   {...getRootProps()}
@@ -345,7 +504,23 @@ export default function NewMemoryPage() {
               </div>
             )}
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <>
+                    <Spinner size="sm" />
+                    <span className="ml-2">Deleting...</span>
+                  </>
+                ) : (
+                  'Delete Memory'
+                )}
+              </button>
+
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -354,10 +529,10 @@ export default function NewMemoryPage() {
                 {isSubmitting ? (
                   <>
                     <Spinner size="sm" />
-                    <span className="ml-2">Creating...</span>
+                    <span className="ml-2">Saving...</span>
                   </>
                 ) : (
-                  'Create Memory'
+                  'Save Changes'
                 )}
               </button>
             </div>

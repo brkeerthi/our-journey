@@ -10,16 +10,14 @@ if (!supabaseAnonKey) {
   throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      persistSession: true,
-      storageKey: 'our-journey-auth'
-    }
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'our-journey-auth',
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
-)
+})
 
 // Export types for TypeScript
 export type { SupabaseClient } from '@supabase/supabase-js' 

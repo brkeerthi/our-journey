@@ -1,104 +1,75 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/utils/supabase'
-import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Image as ImageIcon, Settings, LogOut } from 'lucide-react'
+import { useRouter, usePathname } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { LayoutDashboard, LogOut } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) throw error
-        
-        if (!session) {
-          router.push('/login')
-          return
-        }
-        
-        setIsLoading(false)
-      } catch (err) {
-        console.error('Auth error:', err)
-        router.push('/login')
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user && pathname !== '/admin/login') {
+        router.push('/admin/login')
       }
+      setIsLoading(false)
     }
-
     checkAuth()
-  }, [router])
+  }, [router, supabase.auth, pathname])
+
+  if (pathname === '/admin/login') {
+    return <>{children}</>
+  }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black text-white p-4 flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    )
+    return null
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className="hidden border-r bg-gray-100/40 lg:block lg:w-64">
-        <div className="flex h-full flex-col">
-          <div className="flex h-14 items-center border-b px-4">
-            <Link href="/admin" className="flex items-center font-semibold">
-              Our Journey
-            </Link>
+      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100">
+        <div className="flex flex-col h-full">
+          <div className="p-6">
+            <h1 className="text-xl font-semibold text-gray-900">Our Journey</h1>
+            <p className="text-sm text-gray-500 mt-1">Admin Dashboard</p>
           </div>
-          <div className="flex-1 space-y-1 p-2">
-            <Link href="/admin">
-              <Button
-                variant={pathname === '/admin' ? 'secondary' : 'ghost'}
-                className="w-full justify-start"
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Dashboard
-              </Button>
+          
+          <nav className="flex-1 px-4 space-y-1">
+            <Link
+              href="/admin"
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg"
+            >
+              <LayoutDashboard className="mr-3 h-5 w-5 text-gray-500" />
+              Dashboard
             </Link>
-            <Link href="/admin/memories">
-              <Button
-                variant={pathname.includes('/admin/memories') ? 'secondary' : 'ghost'}
-                className="w-full justify-start"
-              >
-                <ImageIcon className="mr-2 h-4 w-4" />
-                All Memories
-              </Button>
-            </Link>
-            <Link href="/admin/settings">
-              <Button
-                variant={pathname === '/admin/settings' ? 'secondary' : 'ghost'}
-                className="w-full justify-start"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
-            </Link>
-          </div>
-          <div className="border-t p-2">
-            <form action="/auth/signout" method="post">
-              <Button variant="ghost" className="w-full justify-start text-red-600 hover:text-red-600 hover:bg-red-100">
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </form>
+          </nav>
+
+          <div className="p-4 border-t border-gray-100">
+            <button
+              onClick={() => router.push('/admin')}
+              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg w-full"
+            >
+              <LogOut className="mr-3 h-5 w-5 text-gray-500" />
+              Back to Dashboard
+            </button>
           </div>
         </div>
       </div>
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 bg-gray-50">{children}</main>
+
+      {/* Main content */}
+      <div className="ml-64 flex-1">
+        {children}
       </div>
     </div>
   )

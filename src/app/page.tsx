@@ -6,6 +6,7 @@ import { formatDate } from '@/utils/date'
 import { Memory, MemoryWithOptionalMedia } from '@/types'
 import ImageWithFallback from '@/components/ImageWithFallback'
 import { supabase } from '@/utils/supabase'
+import { Spinner } from '@/components/ui/spinner'
 
 // Function to get complete Supabase storage URL
 const getStorageUrl = (path: string) => {
@@ -82,16 +83,22 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white">
-        <div className="text-xl text-gray-600">Loading memories...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner size="lg" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white">
-        <div className="text-xl text-red-600">Error: {error}</div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
+        >
+          Try Again
+        </button>
       </div>
     )
   }
