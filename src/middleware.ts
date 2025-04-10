@@ -36,6 +36,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  // If user is on /login, redirect to /admin/login
+  if (request.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/admin/login', request.url))
+  }
+
   // If accessing admin pages
   if (request.nextUrl.pathname.startsWith('/admin')) {
     // Allow access to login page when not authenticated
@@ -58,5 +63,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: ['/admin/:path*', '/login']
 } 

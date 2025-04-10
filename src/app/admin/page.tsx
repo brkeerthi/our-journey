@@ -54,7 +54,9 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
-      router.push('/login')
+      
+      // Force reload to clear any cached auth state
+      window.location.href = '/admin/login'
     } catch (err) {
       console.error('Error signing out:', err)
     }
