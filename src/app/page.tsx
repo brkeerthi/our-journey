@@ -1,8 +1,10 @@
 'use client'
 
-import { motion, AnimatePresence, useTransform, useMotionValue } from 'framer-motion'
+import { motion, AnimatePresence, useTransform, useMotionValue, PanInfo, wrap } from 'framer-motion'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { createBrowserClient } from '@supabase/ssr'
+import { format } from 'date-fns'
 
 interface MediaItem {
   id: string
@@ -23,17 +25,133 @@ interface Memory {
   media: MediaItem[]
 }
 
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC'
+    }).format(date)
+  } catch (e) {
+    return dateString
+  }
+}
+
 export default function Home() {
   const [memories, setMemories] = useState<Memory[]>([])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
+  const swipeProgress = useMotionValue(0)
   const titleOpacity = useTransform(
     scrollProgress, 
     [0, 50], // Input range (0% to 50% scroll)
     [1, 0]   // Output range (fully visible to invisible)
   )
+
+  const [[page, direction], setPage] = useState([0, 0]);
+  
+  const paginate = (newDirection: number) => {
+    if (selectedMemory) {
+      const nextIndex = wrap(0, selectedMemory.media.length, currentMediaIndex + newDirection);
+      setPage([page + newDirection, newDirection]);
+      setCurrentMediaIndex(nextIndex);
+    }
+  };
+
+  const swipeConfidenceThreshold = 10000;
+  const swipePower = (offset: number, velocity: number) => {
+    return Math.abs(offset) * velocity;
+  };
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const getStorageUrl = (path: string) => {
+    if (!path) {
+      console.error('Empty path provided to getStorageUrl')
+      return '/placeholder.svg'
+    }
+    
+    try {
+      // Get the base URL from environment variable
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!baseUrl) {
+        console.error('NEXT_PUBLIC_SUPABASE_URL is not defined')
+        return '/placeholder.svg'
+      }
+
+      // If it's already a full URL, return it
+      if (path.startsWith('http')) {
+        return path
+      }
+
+      // Construct the storage URL
+      return `${baseUrl}/storage/v1/object/public/media/${path}`
+    } catch (error) {
+      console.error('Error constructing storage URL:', error)
+      return '/placeholder.svg'
+    }
+  }
+
+  // Add image loading state
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({})
+
+  // Update the Image component usage with better error handling
+  const ImageWithFallback = ({ src, alt, ...props }: any) => {
+    const [error, setError] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
+    const imageUrl = getStorageUrl(src)
+
+    useEffect(() => {
+      const checkImage = async () => {
+        if (!imageUrl) return
+        
+        try {
+          const response = await fetch(imageUrl, { method: 'HEAD' })
+          if (!response.ok) {
+            console.error(`Image does not exist at URL: ${imageUrl}`)
+            setError(true)
+          }
+        } catch (error) {
+          console.error('Error checking image:', error)
+          setError(true)
+        }
+      }
+      checkImage()
+    }, [imageUrl])
+
+    if (error) {
+      console.log('Using fallback for URL:', imageUrl)
+    }
+
+    return (
+      <Image
+        {...props}
+        src={error ? '/placeholder.svg' : imageUrl}
+        alt={alt}
+        onError={(e) => {
+          console.error('Image load error for:', imageUrl)
+          setError(true)
+          const imgElement = e.target as HTMLImageElement
+          imgElement.src = '/placeholder.svg'
+          imgElement.classList.remove('grayscale')
+        }}
+        onLoadingComplete={() => setIsLoading(false)}
+      />
+    )
+  }
+
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -69,7 +187,20 @@ export default function Home() {
     }
   }
 
-  return (
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const swipeThreshold = 50;
+    const swipe = info.offset.x;
+    
+    if (selectedMemory) {
+      if (swipe < -swipeThreshold && currentMediaIndex < selectedMemory.media.length - 1) {
+        setCurrentMediaIndex(prev => prev + 1);
+      } else if (swipe > swipeThreshold && currentMediaIndex > 0) {
+        setCurrentMediaIndex(prev => prev - 1);
+      }
+    }
+  };
+
+  return mounted ? (
     <div className="h-screen overflow-hidden bg-white">
       {/* Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-noise" />
@@ -133,13 +264,17 @@ export default function Home() {
                                 transition: { delay: 0.1, duration: 0.5 }
                               }
                             }}
-        >
-          <Image
-                              src={memory.media[2].url}
-                              alt={memory.title}
-                              fill
-                              className="object-cover grayscale"
-                            />
+                          >
+                            <div className="w-full h-full">
+                              <ImageWithFallback
+                                src={memory.media[2].url}
+                                alt={memory.title}
+                                width={250}
+                                height={400}
+                                className="w-full h-full object-cover grayscale"
+                                unoptimized
+                              />
+                            </div>
                           </motion.div>
                         )}
 
@@ -157,13 +292,17 @@ export default function Home() {
                                 transition: { delay: 0.2, duration: 0.5 }
                               }
                             }}
-        >
-          <Image
-                              src={memory.media[1].url}
-                              alt={memory.title}
-                              fill
-                              className="object-cover grayscale"
-                            />
+                          >
+                            <div className="w-full h-full">
+                              <ImageWithFallback
+                                src={memory.media[1].url}
+                                alt={memory.title}
+                                width={250}
+                                height={400}
+                                className="w-full h-full object-cover grayscale"
+                                unoptimized
+                              />
+                            </div>
                           </motion.div>
                         )}
                         
@@ -187,12 +326,24 @@ export default function Home() {
                           }}
                         >
                           <div className="relative w-full h-full">
-                            <Image
-                              src={memory.media[0].url}
-                              alt={memory.title}
-                              fill
-                              className="object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
-                            />
+                            {memory.media[0].type === 'image' ? (
+                              <ImageWithFallback
+                                src={memory.media[0].url}
+                                alt={memory.title}
+                                width={250}
+                                height={400}
+                                priority={index === 0}
+                                className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
+                                unoptimized
+                              />
+                            ) : (
+                              <video
+                                src={memory.media[0].url}
+                                className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
+                                controls
+                                autoPlay
+                              />
+                            )}
                           </div>
                           <motion.div 
                             className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent"
@@ -252,11 +403,7 @@ export default function Home() {
                       className="font-light text-sm tracking-[0.15em] text-gray-500 mb-2"
                       whileHover={{ y: -2 }}
                     >
-                      {new Date(memory.date).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: '2-digit',
-                        year: 'numeric'
-                      })}
+                      {formatDate(memory.date)}
                     </motion.p>
 
                     {/* Title */}
@@ -286,7 +433,7 @@ export default function Home() {
           >
             {/* Desktop View (hidden on mobile) */}
             <div className="hidden md:flex flex-1 relative">
-              {/* Existing desktop gallery code */}
+              {/* Main Gallery Container */}
               <div 
                 className="absolute inset-0 flex overflow-x-auto hide-scrollbar snap-x snap-mandatory"
                 onScroll={(e) => {
@@ -312,22 +459,28 @@ export default function Home() {
                       key={media.id}
                       className="flex-none flex flex-col items-center justify-center mr-6 snap-center"
                     >
-                      <div className="relative w-[700px] aspect-[4/3] overflow-hidden rounded-2xl">
+                      <div className="relative w-[700px] max-h-[80vh] flex items-center justify-center">
                         {media.type === 'video' ? (
                           <video
                             src={media.url}
-                            className="w-full h-full object-contain rounded-2xl"
+                            className="max-w-full max-h-[80vh] object-contain rounded-lg"
                             controls
                             autoPlay
+                            onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
-                          <Image
-                            src={media.url}
-                            alt={selectedMemory.title}
-                            fill
-                            className="object-contain rounded-2xl"
-                            priority
-                          />
+                          <div className="relative w-auto h-auto" onClick={(e) => e.stopPropagation()}>
+                            <ImageWithFallback
+                              src={media.url}
+                              alt={selectedMemory.title}
+                              width={1920}
+                              height={1080}
+                              priority
+                              quality={90}
+                              className="w-auto h-auto max-w-[700px] max-h-[80vh] object-contain rounded-lg"
+                              unoptimized
+                            />
+                          </div>
                         )}
                       </div>
                       <div className="mt-2 text-white/50 font-light text-sm">
@@ -348,11 +501,7 @@ export default function Home() {
                     className="space-y-4"
                   >
                     <p className="text-white/70 text-sm tracking-[0.2em] font-light">
-                      {new Date(selectedMemory.date).toLocaleDateString('en-US', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      }).toUpperCase()}
+                      {formatDate(selectedMemory.date).toUpperCase()}
                     </p>
                     <h2 className="text-white text-3xl font-light tracking-wide">
                       {selectedMemory.title}
@@ -370,105 +519,116 @@ export default function Home() {
               </div>
 
               {/* Close Button */}
-              <motion.button
+              <button
                 className="absolute top-6 right-6 text-white text-4xl font-light hover:opacity-75 transition-opacity z-10 bg-black/20 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
                 onClick={() => setSelectedMemory(null)}
-                whileHover={{ scale: 1.1 }}
               >
                 ×
-              </motion.button>
+              </button>
             </div>
 
             {/* Mobile View (hidden on desktop) */}
             <div className="md:hidden flex flex-1 relative">
-              {/* Close Button */}
-              <motion.button
-                className="absolute top-4 right-4 text-white text-3xl font-light z-10 bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
-                onClick={() => setSelectedMemory(null)}
-                whileHover={{ scale: 1.1 }}
-              >
-                ×
-              </motion.button>
-
-              {/* Main Content Area */}
-              <div className="w-full h-full flex flex-col items-center justify-center px-4 gap-6">
-                <div className="relative w-full max-w-lg aspect-[4/3] rounded-lg overflow-hidden">
-                  {selectedMemory.media[currentMediaIndex].type === 'video' ? (
-                    <video
-                      src={selectedMemory.media[currentMediaIndex].url}
-                      className="w-full h-full object-contain"
-                      controls
-                      autoPlay
-                    />
-                  ) : (
-                    <Image
+              {/* Mobile Content Here */}
+              <div className="w-full h-full flex items-center justify-center">
+                {selectedMemory?.media[currentMediaIndex].type === 'video' ? (
+                  <video
+                    src={selectedMemory.media[currentMediaIndex].url}
+                    className="max-w-full max-h-[80vh] object-contain"
+                    controls
+                    autoPlay
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                    <ImageWithFallback
                       src={selectedMemory.media[currentMediaIndex].url}
                       alt={selectedMemory.title}
-                      fill
-                      className="object-contain"
+                      width={1920}
+                      height={1080}
                       priority
+                      quality={90}
+                      className="w-full h-[calc(100vh-32px)] mt-8 object-contain"
+                      unoptimized
                     />
-                  )}
-                </div>
-
-                {/* Memory Details */}
-                <div className="w-full max-w-lg">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="space-y-3"
-                  >
-                    <p className="text-white/70 text-xs tracking-[0.2em] font-light">
-                      {new Date(selectedMemory.date).toLocaleDateString('en-US', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      }).toUpperCase()}
-                    </p>
-                    <h2 className="text-white text-xl font-light tracking-wide">
-                      {selectedMemory.title}
-                    </h2>
-                    <p className="text-white/80 text-sm font-light leading-relaxed">
-                      {selectedMemory.description}
-                    </p>
-                    {selectedMemory.location && (
-                      <p className="text-white/50 text-xs font-light">
-                        {selectedMemory.location}
-                      </p>
-                    )}
-                  </motion.div>
-                </div>
+                  </div>
+                )}
               </div>
 
-              {/* Navigation and Page Count Combined */}
+              {/* Mobile Memory Details with Gradient Overlay */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent h-[35%] pointer-events-none" />
+              <div className="absolute inset-x-0 bottom-16 px-6 z-40">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="space-y-3"
+                >
+                  <p className="text-white/70 text-xs tracking-[0.2em] font-light">
+                    {formatDate(selectedMemory.date).toUpperCase()}
+                  </p>
+                  <h2 className="text-white text-xl font-light tracking-wide">
+                    {selectedMemory.title}
+                  </h2>
+                  <p className="text-white/80 text-sm font-light leading-relaxed">
+                    {selectedMemory.description}
+                  </p>
+                  {selectedMemory.location && (
+                    <p className="text-white/50 text-xs font-light">
+                      {selectedMemory.location}
+                    </p>
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Mobile Navigation - Moved below memory data */}
               {selectedMemory.media.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
-                  <motion.button
-                    className={`text-white bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm ${currentMediaIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => currentMediaIndex > 0 && setCurrentMediaIndex(prev => prev - 1)}
-                    whileTap={currentMediaIndex > 0 ? { scale: 0.9 } : {}}
-                    disabled={currentMediaIndex === 0}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
+                  <button
+                    className="text-white bg-black/40 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentMediaIndex((prev) =>
+                        prev === 0 ? selectedMemory.media.length - 1 : prev - 1
+                      );
+                    }}
                   >
                     ←
-                  </motion.button>
+                  </button>
                   
-                  <div className="bg-black/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                  <div className="bg-black/40 backdrop-blur-sm px-6 py-2 rounded-full">
                     <p className="text-white/90 text-sm font-light">
                       {currentMediaIndex + 1} / {selectedMemory.media.length}
                     </p>
                   </div>
 
-                  <motion.button
-                    className={`text-white bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm ${currentMediaIndex === selectedMemory.media.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => currentMediaIndex < selectedMemory.media.length - 1 && setCurrentMediaIndex(prev => prev + 1)}
-                    whileTap={currentMediaIndex < selectedMemory.media.length - 1 ? { scale: 0.9 } : {}}
-                    disabled={currentMediaIndex === selectedMemory.media.length - 1}
+                  <button
+                    className="text-white bg-black/40 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentMediaIndex((prev) =>
+                        prev === selectedMemory.media.length - 1 ? 0 : prev + 1
+                      );
+                    }}
                   >
                     →
-                  </motion.button>
+                  </button>
                 </div>
               )}
+
+              {/* Mobile Close Button */}
+              <button
+                className="absolute top-4 right-4 text-white text-3xl font-light z-50 bg-black/40 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedMemory(null);
+                }}
+              >
+                ×
+              </button>
             </div>
 
             {/* Progress Bar (desktop only) */}
@@ -499,5 +659,5 @@ export default function Home() {
         }
       `}</style>
     </div>
-  )
+  ) : null
 }

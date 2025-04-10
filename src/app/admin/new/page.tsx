@@ -60,10 +60,16 @@ export default function NewMemory() {
     setError(null)
 
     try {
+      // Check authentication
       const {
         data: { user },
+        error: authError
       } = await supabase.auth.getUser()
 
+      if (authError) {
+        console.error('Auth error:', authError)
+        throw new Error('Authentication error: ' + authError.message)
+      }
       if (!user) throw new Error('Not authenticated')
 
       // Create memory
@@ -81,22 +87,40 @@ export default function NewMemory() {
         .select()
         .single()
 
-      if (memoryError) throw memoryError
+      if (memoryError) {
+        console.error('Memory creation error:', memoryError)
+        throw new Error('Failed to create memory: ' + memoryError.message)
+      }
+
+      if (!memory) throw new Error('No memory data returned after creation')
 
       // Upload media files
       if (mediaFiles.length > 0) {
-        const mediaUploads = mediaFiles.map(async (mediaFile) => {
+        const mediaUploads = mediaFiles.map(async (mediaFile, index) => {
           const fileExt = mediaFile.file.name.split('.').pop()
-          const fileName = `${Math.random()}.${fileExt}`
+          const fileName = `${Date.now()}-${index}-${Math.random().toString(36).substring(7)}.${fileExt}`
           const filePath = `${user.id}/${memory.id}/${fileName}`
 
-          const { error: uploadError } = await supabase.storage
+          // Check file size
+          const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+          if (mediaFile.file.size > MAX_FILE_SIZE) {
+            throw new Error(`File ${mediaFile.file.name} is too large. Maximum size is 50MB.`)
+          }
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
             .from('media')
-            .upload(filePath, mediaFile.file)
+            .upload(filePath, mediaFile.file, {
+              cacheControl: '3600',
+              upsert: false
+            })
 
-          if (uploadError) throw uploadError
+          if (uploadError) {
+            console.error(`Upload error for file ${mediaFile.file.name}:`, uploadError)
+            throw new Error(`Failed to upload ${mediaFile.file.name}: ${uploadError.message}`)
+          }
 
-          return supabase
+          // Store just the path, not the full URL
+          const { data: mediaData, error: mediaError } = await supabase
             .from('media')
             .insert([
               {
@@ -105,15 +129,29 @@ export default function NewMemory() {
                 type: mediaFile.type,
               },
             ])
+            .select()
+            .single()
+
+          if (mediaError) {
+            console.error('Media record creation error:', mediaError)
+            throw new Error('Failed to create media record: ' + mediaError.message)
+          }
+
+          return mediaData
         })
 
-        await Promise.all(mediaUploads)
+        try {
+          await Promise.all(mediaUploads)
+        } catch (uploadErr) {
+          console.error('Media upload error:', uploadErr)
+          throw uploadErr
+        }
       }
 
       router.push('/admin')
     } catch (err) {
-      console.error('Error:', err)
-      setError('Failed to create memory')
+      console.error('Error creating memory:', err)
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
