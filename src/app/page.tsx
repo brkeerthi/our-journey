@@ -7,6 +7,7 @@ import { Memory, MemoryWithOptionalMedia } from '@/types'
 import ImageWithFallback from '@/components/ImageWithFallback'
 import { supabase } from '@/utils/supabase'
 import { Spinner } from '@/components/ui/spinner'
+import LoginOverlay from '@/components/LoginOverlay'
 
 // Function to get complete Supabase storage URL
 const getStorageUrl = (path: string) => {
@@ -27,6 +28,8 @@ export default function Home() {
   const [memories, setMemories] = useState<MemoryWithOptionalMedia[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAnimatingIn, setIsAnimatingIn] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const titleOpacity = useTransform(
@@ -36,8 +39,24 @@ export default function Home() {
   )
 
   useEffect(() => {
+    // Check if it's a hard refresh
+    const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+    const isHardRefresh = navEntry?.type === 'reload'
+
+    if (isHardRefresh) {
+      localStorage.removeItem('authenticated')
+      setIsAuthenticated(false)
+    } else {
+      const authenticated = localStorage.getItem('authenticated') === 'true'
+      setIsAuthenticated(authenticated)
+    }
+  }, [])
+
+  useEffect(() => {
     const fetchMemories = async () => {
       try {
+        if (!isAuthenticated) return
+
         const { data, error } = await supabase
           .from('memories')
           .select('*, media(*)')
@@ -51,18 +70,27 @@ export default function Home() {
           throw new Error('No memories found')
         }
 
-        // Set all memories without filtering
         setMemories(data as MemoryWithOptionalMedia[])
+        // Set loading to false after data is loaded
+        setIsLoading(false)
+        // Reset animation state after a short delay
+        setTimeout(() => {
+          setIsAnimatingIn(false)
+        }, 800)
       } catch (err) {
         console.error('Error fetching memories:', err)
         setError(err instanceof Error ? err.message : 'Failed to load memories')
-      } finally {
         setIsLoading(false)
+        setIsAnimatingIn(false)
       }
     }
 
-    fetchMemories()
-  }, [])
+    if (isAuthenticated) {
+      setIsAnimatingIn(true)
+      // Start fetching memories immediately after authentication
+      fetchMemories()
+    }
+  }, [isAuthenticated])
 
   const handleScroll = () => {
     if (scrollContainerRef.current) {
@@ -81,10 +109,60 @@ export default function Home() {
     }
   }
 
-  if (isLoading) {
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return <LoginOverlay onAuthenticated={() => setIsAuthenticated(true)} />
+  }
+
+  if (isLoading || isAnimatingIn) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spinner size="lg" />
+      <div className="h-screen overflow-hidden bg-white">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="h-full flex relative"
+        >
+          {/* Mobile Title Section */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm"
+          >
+            <div className="px-6 py-3 text-center">
+              <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
+                Keerthi & Rakshitha&apos;s
+              </h1>
+              <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide">
+                Echoes of shared time.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Desktop Title Section */}
+          <motion.div 
+            className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none hidden md:block"
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+          >
+            <motion.div className="flex flex-col">
+              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+                Keerthi &
+              </span>
+              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+                Rakshitha&apos;s
+              </span>
+              <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
+                Echoes of shared time.
+              </span>
+            </motion.div>
+          </motion.div>
+
+          <div className="w-full flex items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        </motion.div>
       </div>
     )
   }
@@ -117,9 +195,21 @@ export default function Home() {
       <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-noise" />
       
       <div className="h-full flex relative">
-        {/* Title Section */}
+        {/* Mobile Title Section */}
+        <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm">
+          <div className="px-6 py-3 text-center">
+            <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
+              Keerthi & Rakshitha&apos;s
+            </h1>
+            <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide">
+              Echoes of shared time.
+            </p>
+          </div>
+        </div>
+
+        {/* Desktop Title Section */}
         <motion.div 
-          className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+          className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none hidden md:block"
           style={{ opacity: titleOpacity }}
           initial={{ opacity: 1 }}
         >
@@ -146,14 +236,21 @@ export default function Home() {
           <div 
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory h-full items-center min-w-0 pl-[33vw]"
+            className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory h-full items-center min-w-0 md:pl-[33vw] pt-20 md:pt-0"
           >
-            <div className="flex gap-24 pr-24">
+            <div className="flex gap-24 pr-24 md:pl-0 pl-[calc(50vw-125px)]">
               {memories.map((memory, index) => (
                 <motion.div
                   key={memory.id}
-                  initial={{ opacity: 0, x: 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: 100 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    type: "spring",
+                    damping: 30,
+                    stiffness: 80,
+                    delay: index * 0.1,
+                    duration: 0.8
+                  }}
                   viewport={{ once: true, margin: "-100px" }}
                   className="flex-none snap-center relative"
                 >
