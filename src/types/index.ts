@@ -13,5 +13,9 @@ export interface Memory {
   date: string;
   location?: string;
   created_at: string;
+  media: MediaItem[];
+}
+
+export interface MemoryWithOptionalMedia extends Omit<Memory, 'media'> {
   media?: MediaItem[];
 }

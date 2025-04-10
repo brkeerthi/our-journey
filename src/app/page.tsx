@@ -1,160 +1,23 @@
 'use client'
 
-import { motion, AnimatePresence, useTransform, useMotionValue, PanInfo, wrap } from 'framer-motion'
 import { useState, useEffect, useRef } from 'react'
-import Image from 'next/image'
-import { createBrowserClient } from '@supabase/ssr'
-import { format } from 'date-fns'
 import { createClient } from '@supabase/supabase-js'
-import { Memory } from '@/types'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import { formatDate } from '@/utils/date'
+import { Memory, MemoryWithOptionalMedia } from '@/types'
 import ImageWithFallback from '@/components/ImageWithFallback'
-
-interface MediaItem {
-  id: string
-  memory_id: string
-  url: string
-  type: 'image' | 'video'
-  created_at: string
-  order_index: number
-}
-
-interface Memory {
-  id: string
-  title: string
-  description: string
-  created_at: string
-  date: string
-  location?: string
-  media: MediaItem[]
-}
-
-const formatDate = (dateString: string) => {
-  try {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC'
-    }).format(date)
-  } catch (e) {
-    return dateString
-  }
-}
 
 export default function Home() {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
-  const [memories, setMemories] = useState<Memory[]>([])
+  const [memories, setMemories] = useState<MemoryWithOptionalMedia[]>([])
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
-  const swipeProgress = useMotionValue(0)
   const titleOpacity = useTransform(
-    scrollProgress, 
+    scrollProgress,
     [0, 50], // Input range (0% to 50% scroll)
     [1, 0]   // Output range (fully visible to invisible)
   )
-
-  const [[page, direction], setPage] = useState([0, 0]);
-  
-  const paginate = (newDirection: number) => {
-    if (selectedMemory) {
-      const nextIndex = wrap(0, selectedMemory.media.length, currentMediaIndex + newDirection);
-      setPage([page + newDirection, newDirection]);
-      setCurrentMediaIndex(nextIndex);
-    }
-  };
-
-  const swipeConfidenceThreshold = 10000;
-  const swipePower = (offset: number, velocity: number) => {
-    return Math.abs(offset) * velocity;
-  };
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const getStorageUrl = (path: string) => {
-    if (!path) {
-      console.error('Empty path provided to getStorageUrl')
-      return '/placeholder.svg'
-    }
-    
-    try {
-      // Get the base URL from environment variable
-      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (!baseUrl) {
-        console.error('NEXT_PUBLIC_SUPABASE_URL is not defined')
-        return '/placeholder.svg'
-      }
-
-      // If it's already a full URL, return it
-      if (path.startsWith('http')) {
-        return path
-      }
-
-      // Construct the storage URL
-      return `${baseUrl}/storage/v1/object/public/media/${path}`
-    } catch (error) {
-      console.error('Error constructing storage URL:', error)
-      return '/placeholder.svg'
-    }
-  }
-
-  // Add image loading state
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({})
-
-  // Update the Image component usage with better error handling
-  const ImageWithFallback = ({ src, alt, ...props }: any) => {
-    const [error, setError] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
-    const imageUrl = getStorageUrl(src)
-
-    useEffect(() => {
-      const checkImage = async () => {
-        if (!imageUrl) return
-        
-        try {
-          const response = await fetch(imageUrl, { method: 'HEAD' })
-          if (!response.ok) {
-            console.error(`Image does not exist at URL: ${imageUrl}`)
-            setError(true)
-          }
-        } catch (error) {
-          console.error('Error checking image:', error)
-          setError(true)
-        }
-      }
-      checkImage()
-    }, [imageUrl])
-
-    if (error) {
-      console.log('Using fallback for URL:', imageUrl)
-    }
-
-    return (
-      <Image
-        {...props}
-        src={error ? '/placeholder.svg' : imageUrl}
-        alt={alt}
-        onError={(e) => {
-          console.error('Image load error for:', imageUrl)
-          setError(true)
-          const imgElement = e.target as HTMLImageElement
-          imgElement.src = '/placeholder.svg'
-          imgElement.classList.remove('grayscale')
-        }}
-        onLoadingComplete={() => setIsLoading(false)}
-      />
-    )
-  }
-
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -173,7 +36,7 @@ export default function Home() {
         return
       }
 
-      setMemories(memoriesData as Memory[])
+      setMemories(memoriesData as MemoryWithOptionalMedia[])
     }
 
     fetchMemories()
@@ -183,31 +46,20 @@ export default function Home() {
     if (scrollContainerRef.current) {
       const { scrollLeft, clientWidth } = scrollContainerRef.current
       const firstMemoryPosition = clientWidth * 0.33 // 33vw from left where memories start
-      
-      // Calculate progress based on first memory card position
       const progress = Math.min(100, Math.max(0, (scrollLeft / firstMemoryPosition) * 50))
       scrollProgress.set(progress)
     }
   }
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const swipeThreshold = 50;
-    const swipe = info.offset.x;
-    
-    if (selectedMemory) {
-      if (swipe < -swipeThreshold && currentMediaIndex < selectedMemory.media.length - 1) {
-        setCurrentMediaIndex(prev => prev + 1);
-      } else if (swipe > swipeThreshold && currentMediaIndex > 0) {
-        setCurrentMediaIndex(prev => prev - 1);
-      }
+  // Function to ensure memory has media before setting it as selected
+  const handleSelectMemory = (memory: MemoryWithOptionalMedia) => {
+    if (memory.media && memory.media.length > 0) {
+      setSelectedMemory(memory as Memory)
+      setCurrentMediaIndex(0)
     }
-  };
-
-  const handleImageError = (error: Error) => {
-    console.error('Error loading image:', error)
   }
 
-  return mounted ? (
+  return (
     <div className="h-screen overflow-hidden bg-white">
       {/* Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-noise" />
@@ -246,16 +98,13 @@ export default function Home() {
                   className="flex-none snap-center relative"
                 >
                   <div className="w-[250px] flex flex-col items-center">
-                    {memory.media.length > 0 ? (
+                    {memory.media && memory.media.length > 0 ? (
                       <motion.div 
                         className="relative h-[400px] cursor-pointer perspective-1000"
                         whileHover="hover"
                         initial="initial"
                         animate="initial"
-                        onClick={() => {
-                          setSelectedMemory(memory)
-                          setCurrentMediaIndex(0)
-                        }}
+                        onClick={() => handleSelectMemory(memory)}
                       >
                         {/* Background Cards - Third Layer */}
                         {memory.media.length > 2 && (
@@ -333,7 +182,12 @@ export default function Home() {
                           }}
                         >
                           <div className="relative w-full h-full">
-                            {memory.media[0].type === 'image' ? (
+                            {memory.media[0].type === 'video' ? (
+                              <video
+                                src={memory.media[0].url}
+                                className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
+                              />
+                            ) : (
                               <ImageWithFallback
                                 src={memory.media[0].url}
                                 alt={memory.title}
@@ -342,13 +196,6 @@ export default function Home() {
                                 priority={index === 0}
                                 className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
                                 unoptimized
-                              />
-                            ) : (
-                              <video
-                                src={memory.media[0].url}
-                                className="w-full h-full object-cover grayscale transition-all duration-700 group-hover:grayscale-0"
-                                controls
-                                autoPlay
                               />
                             )}
                           </div>
@@ -452,24 +299,24 @@ export default function Home() {
                   if (progressBar) {
                     progressBar.style.width = `${progress}%`;
                   }
-                  const itemWidth = target.scrollWidth / selectedMemory.media.length;
+                  const itemWidth = target.scrollWidth / (selectedMemory.media?.length || 1);
                   const newIndex = Math.min(
                     Math.round(currentScroll / itemWidth),
-                    selectedMemory.media.length - 1
+                    (selectedMemory.media?.length || 1) - 1
                   );
                   setCurrentMediaIndex(newIndex);
                 }}
               >
                 <div className="flex h-full items-center pl-[calc(50vw-350px)]">
-                  {selectedMemory.media.map((media, index) => (
+                  {selectedMemory.media?.map((mediaItem, index) => (
                     <div 
-                      key={media.id}
+                      key={mediaItem.id}
                       className="flex-none flex flex-col items-center justify-center mr-6 snap-center"
                     >
                       <div className="relative w-[700px] max-h-[80vh] flex items-center justify-center">
-                        {media.type === 'video' ? (
+                        {mediaItem.type === 'video' ? (
                           <video
-                            src={media.url}
+                            src={mediaItem.url}
                             className="max-w-full max-h-[80vh] object-contain rounded-lg"
                             controls
                             autoPlay
@@ -478,7 +325,7 @@ export default function Home() {
                         ) : (
                           <div className="relative w-auto h-auto" onClick={(e) => e.stopPropagation()}>
                             <ImageWithFallback
-                              src={media.url}
+                              src={mediaItem.url}
                               alt={selectedMemory.title}
                               width={1920}
                               height={1080}
@@ -538,27 +385,31 @@ export default function Home() {
             <div className="md:hidden flex flex-1 relative">
               {/* Mobile Content Here */}
               <div className="w-full h-full flex items-center justify-center">
-                {selectedMemory?.media[currentMediaIndex].type === 'video' ? (
-                  <video
-                    src={selectedMemory.media[currentMediaIndex].url}
-                    className="max-w-full max-h-[80vh] object-contain"
-                    controls
-                    autoPlay
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                    <ImageWithFallback
+                {selectedMemory.media && selectedMemory.media.length > 0 ? (
+                  selectedMemory.media[currentMediaIndex]?.type === 'video' ? (
+                    <video
                       src={selectedMemory.media[currentMediaIndex].url}
-                      alt={selectedMemory.title}
-                      width={1920}
-                      height={1080}
-                      priority
-                      quality={90}
-                      className="w-full h-[calc(100vh-32px)] mt-8 object-contain"
-                      unoptimized
+                      className="max-w-full max-h-[80vh] object-contain"
+                      controls
+                      autoPlay
+                      onClick={(e) => e.stopPropagation()}
                     />
-                  </div>
+                  ) : (
+                    <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                      <ImageWithFallback
+                        src={selectedMemory.media[currentMediaIndex].url}
+                        alt={selectedMemory.title}
+                        width={1920}
+                        height={1080}
+                        priority
+                        quality={90}
+                        className="w-full h-[calc(100vh-32px)] mt-8 object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  )
+                ) : (
+                  <div className="text-2xl mb-4">✍️</div>
                 )}
               </div>
 
@@ -588,8 +439,8 @@ export default function Home() {
                 </motion.div>
               </div>
 
-              {/* Mobile Navigation - Moved below memory data */}
-              {selectedMemory.media.length > 1 && (
+              {/* Mobile Navigation */}
+              {selectedMemory.media && selectedMemory.media.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
                   <button
                     className="text-white bg-black/40 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
@@ -644,7 +495,7 @@ export default function Home() {
                 id="progress-bar"
                 className="h-full bg-white"
                 initial={{ width: '0%' }}
-                animate={{ width: `${(currentMediaIndex / (selectedMemory.media.length - 1)) * 100}%` }}
+                animate={{ width: `${(currentMediaIndex / (selectedMemory.media?.length || 1)) * 100}%` }}
                 transition={{ type: "spring", damping: 20 }}
               />
             </div>
@@ -666,5 +517,5 @@ export default function Home() {
         }
       `}</style>
     </div>
-  ) : null
+  )
 }
