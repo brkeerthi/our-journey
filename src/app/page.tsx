@@ -30,6 +30,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAnimatingIn, setIsAnimatingIn] = useState(false)
+  const [showOnlyMedia, setShowOnlyMedia] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const titleOpacity = useTransform(
@@ -60,7 +61,7 @@ export default function Home() {
         const { data, error } = await supabase
           .from('memories')
           .select('*, media(*)')
-          .order('date', { ascending: false })
+          .order('date', { ascending: true })
 
         if (error) {
           throw error
@@ -108,6 +109,11 @@ export default function Home() {
       setCurrentMediaIndex(0)
     }
   }
+
+  // Filter memories based on showOnlyMedia toggle
+  const filteredMemories = showOnlyMedia 
+    ? memories.filter(memory => memory.media && memory.media.length > 0)
+    : memories
 
   // Show login if not authenticated
   if (!isAuthenticated) {
@@ -194,6 +200,24 @@ export default function Home() {
       {/* Grain Overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-noise" />
       
+      {/* Toggle Button */}
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        onClick={() => setShowOnlyMedia(!showOnlyMedia)}
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 bg-white/80 backdrop-blur-sm shadow-lg rounded-full px-4 py-2 flex items-center gap-2 hover:bg-white transition-colors duration-200 group md:left-8 md:-translate-x-0"
+      >
+        <span className="text-lg transition-transform duration-200 group-hover:scale-110">✍️</span>
+        <div className="h-5 w-9 rounded-full relative bg-gray-200 transition-colors duration-200" style={{ backgroundColor: showOnlyMedia ? '#e5e7eb' : '#d1d5db' }}>
+          <motion.div 
+            className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-600"
+            animate={{ x: showOnlyMedia ? 16 : 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          />
+        </div>
+      </motion.button>
+
       <div className="h-full flex relative">
         {/* Mobile Title Section */}
         <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm">
@@ -238,8 +262,8 @@ export default function Home() {
             onScroll={handleScroll}
             className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory h-full items-center min-w-0 md:pl-[33vw] pt-20 md:pt-0"
           >
-            <div className="flex gap-24 pr-24 md:pl-0 pl-[calc(50vw-125px)]">
-              {memories.map((memory, index) => (
+            <div className="flex gap-24 pr-24 pl-[calc(50vw-125px)] md:pl-0">
+              {filteredMemories.map((memory, index) => (
                 <motion.div
                   key={memory.id}
                   initial={{ opacity: 0, x: 100 }}
