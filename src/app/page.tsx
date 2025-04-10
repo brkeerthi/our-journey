@@ -5,6 +5,9 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { createBrowserClient } from '@supabase/ssr'
 import { format } from 'date-fns'
+import { createClient } from '@supabase/supabase-js'
+import { Memory } from '@/types'
+import ImageWithFallback from '@/components/ImageWithFallback'
 
 interface MediaItem {
   id: string
@@ -40,9 +43,9 @@ const formatDate = (dateString: string) => {
 }
 
 export default function Home() {
-  const [memories, setMemories] = useState<Memory[]>([])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
+  const [memories, setMemories] = useState<Memory[]>([])
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const swipeProgress = useMotionValue(0)
@@ -155,22 +158,22 @@ export default function Home() {
 
   useEffect(() => {
     const fetchMemories = async () => {
-      try {
-        console.log('Fetching memories from API...')
-        const response = await fetch('/api/memories')
-        const data = await response.json()
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch memories')
-        }
+      const { data: memoriesData, error } = await supabase
+        .from('memories')
+        .select('*, media(*)')
+        .order('date', { ascending: false })
 
-        if (data.memories) {
-          console.log('Memories fetched:', data.memories.length)
-          setMemories(data.memories)
-        }
-      } catch (error) {
+      if (error) {
         console.error('Error fetching memories:', error)
+        return
       }
+
+      setMemories(memoriesData as Memory[])
     }
 
     fetchMemories()
@@ -199,6 +202,10 @@ export default function Home() {
       }
     }
   };
+
+  const handleImageError = (error: Error) => {
+    console.error('Error loading image:', error)
+  }
 
   return mounted ? (
     <div className="h-screen overflow-hidden bg-white">

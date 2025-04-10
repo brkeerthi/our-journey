@@ -17,62 +17,23 @@ export default function NewMemory() {
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mediaFiles, setMediaFiles] = useState<MediaPreview[]>([])
-  
   const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newMediaFiles = acceptedFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      type: file.type.startsWith('image/') ? 'image' as const : 'video' as const
-    }))
-    setMediaFiles(prev => [...prev, ...newMediaFiles].slice(0, 4))
-  }, [])
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': [],
-      'video/*': []
-    },
-    maxFiles: 4
-  })
-
-  const removeMedia = (index: number) => {
-    setMediaFiles(prev => {
-      const newFiles = [...prev]
-      URL.revokeObjectURL(newFiles[index].preview)
-      newFiles.splice(index, 1)
-      return newFiles
-    })
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    setIsSubmitting(true)
     setError(null)
 
     try {
-      // Check authentication
-      const {
-        data: { user },
-        error: authError
-      } = await supabase.auth.getUser()
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
 
-      if (authError) {
-        console.error('Auth error:', authError)
-        throw new Error('Authentication error: ' + authError.message)
-      }
-      if (!user) throw new Error('Not authenticated')
-
-      // Create memory
+      // Create memory record
       const { data: memory, error: memoryError } = await supabase
         .from('memories')
         .insert([
@@ -81,201 +42,106 @@ export default function NewMemory() {
             description,
             date,
             location,
-            user_id: user.id,
           },
         ])
         .select()
         .single()
 
-      if (memoryError) {
-        console.error('Memory creation error:', memoryError)
-        throw new Error('Failed to create memory: ' + memoryError.message)
-      }
-
-      if (!memory) throw new Error('No memory data returned after creation')
+      if (memoryError) throw memoryError
 
       // Upload media files
-      if (mediaFiles.length > 0) {
-        const mediaUploads = mediaFiles.map(async (mediaFile, index) => {
-          const fileExt = mediaFile.file.name.split('.').pop()
-          const fileName = `${Date.now()}-${index}-${Math.random().toString(36).substring(7)}.${fileExt}`
-          const filePath = `${user.id}/${memory.id}/${fileName}`
+      if (files.length > 0) {
+        for (const file of files) {
+          const fileExt = file.name.split('.').pop()
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+          const filePath = `${memory.id}/${fileName}`
 
-          // Check file size
-          const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
-          if (mediaFile.file.size > MAX_FILE_SIZE) {
-            throw new Error(`File ${mediaFile.file.name} is too large. Maximum size is 50MB.`)
-          }
+          const { error: uploadError } = await supabase.storage
+            .from('memories')
+            .upload(filePath, file)
 
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('media')
-            .upload(filePath, mediaFile.file, {
-              cacheControl: '3600',
-              upsert: false
-            })
+          if (uploadError) throw uploadError
 
-          if (uploadError) {
-            console.error(`Upload error for file ${mediaFile.file.name}:`, uploadError)
-            throw new Error(`Failed to upload ${mediaFile.file.name}: ${uploadError.message}`)
-          }
+          // Create media record
+          const { error: mediaError } = await supabase.from('media').insert([
+            {
+              memory_id: memory.id,
+              url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/memories/${filePath}`,
+              type: file.type.startsWith('image/') ? 'image' : 'video',
+            },
+          ])
 
-          // Store just the path, not the full URL
-          const { data: mediaData, error: mediaError } = await supabase
-            .from('media')
-            .insert([
-              {
-                memory_id: memory.id,
-                url: filePath,
-                type: mediaFile.type,
-              },
-            ])
-            .select()
-            .single()
-
-          if (mediaError) {
-            console.error('Media record creation error:', mediaError)
-            throw new Error('Failed to create media record: ' + mediaError.message)
-          }
-
-          return mediaData
-        })
-
-        try {
-          await Promise.all(mediaUploads)
-        } catch (uploadErr) {
-          console.error('Media upload error:', uploadErr)
-          throw uploadErr
+          if (mediaError) throw mediaError
         }
       }
 
       router.push('/admin')
     } catch (err) {
       console.error('Error creating memory:', err)
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setError('Failed to create memory. Please try again.')
     } finally {
-      setLoading(false)
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold mb-6">Create New Memory</h2>
+    <div className="min-h-screen bg-black text-white p-4">
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-3xl font-light mb-8">New Memory</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Title
-            </label>
+            <label className="block text-sm font-medium mb-2">Title</label>
             <input
               type="text"
-              required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              required
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-gray-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Description
-            </label>
+            <label className="block text-sm font-medium mb-2">Description</label>
             <textarea
-              required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              required
               rows={4}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-gray-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Date
-            </label>
+            <label className="block text-sm font-medium mb-2">Date</label>
             <input
               type="date"
-              required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              required
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-gray-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Location
-            </label>
+            <label className="block text-sm font-medium mb-2">Location</label>
             <input
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-gray-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Media (Up to 4 files)
-            </label>
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-                isDragActive ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-500'
-              }`}
-            >
-              <input {...getInputProps()} />
-              <p className="text-gray-600">
-                {isDragActive
-                  ? 'Drop the files here...'
-                  : 'Drag & drop files here, or click to select'}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Images and videos accepted
-              </p>
-            </div>
-
-            {mediaFiles.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                {mediaFiles.map((media, index) => (
-                  <div key={index} className="relative">
-                    {media.type === 'image' ? (
-                      <Image
-                        src={media.preview}
-                        alt={`Preview ${index + 1}`}
-                        width={200}
-                        height={200}
-                        className="rounded-lg object-cover w-full h-32"
-                      />
-                    ) : (
-                      <video
-                        src={media.preview}
-                        className="rounded-lg object-cover w-full h-32"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removeMedia(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <label className="block text-sm font-medium mb-2">Media</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*,video/*"
+              onChange={(e) => setFiles(Array.from(e.target.files || []))}
+              className="w-full px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:border-gray-500"
+            />
           </div>
 
           {error && (
@@ -284,10 +150,10 @@ export default function NewMemory() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            disabled={isSubmitting}
+            className="w-full px-4 py-2 rounded-lg bg-white text-black font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating...' : 'Create Memory'}
+            {isSubmitting ? 'Creating...' : 'Create Memory'}
           </button>
         </form>
       </div>
