@@ -1,210 +1,201 @@
 'use client'
 
-import { createBrowserClient } from '@supabase/ssr'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
-import { format } from 'date-fns'
-
-interface MediaItem {
-  id: string
-  memory_id: string
-  url: string
-  type: 'image' | 'video'
-}
+import { supabase } from '@/utils/supabase'
+import Link from 'next/link'
+import { formatDate } from '@/utils/date'
 
 interface Memory {
   id: string
   title: string
   description: string
   date: string
-  location: string
-  media: MediaItem[]
+  location?: string
   created_at: string
+  user_id: string
 }
 
-export default function AdminPage() {
+export default function AdminDashboard() {
   const [memories, setMemories] = useState<Memory[]>([])
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const [isDeleting, setIsDeleting] = useState<string | null>(null)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const fetchMemories = useCallback(async () => {
-    try {
-      const { data: memoriesData, error: memoriesError } = await supabase
-        .from('memories')
-        .select(`
-          *,
-          media (
-            id,
-            url,
-            type
-          )
-        `)
-        .order('date', { ascending: false })
-
-      if (memoriesError) throw memoriesError
-
-      setMemories(memoriesData || [])
-    } catch (error) {
-      console.error('Error fetching memories:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
 
   useEffect(() => {
+    const fetchMemories = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.user?.id) {
+          router.push('/login')
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('memories')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .eq('user_id', session.user.id)
+
+        if (error) throw error
+
+        setMemories(data || [])
+      } catch (err) {
+        console.error('Error fetching memories:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchMemories()
-  }, [fetchMemories])
+  }, [router])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-    router.refresh()
-  }
-
-  const handleDelete = async (memoryId: string) => {
-    if (!confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
-      return
-    }
-
-    setIsDeleting(memoryId)
     try {
-      // First, delete all media files from storage
-      const memory = memories.find(m => m.id === memoryId)
-      if (memory?.media?.length) {
-        for (const mediaItem of memory.media) {
-          const path = mediaItem.url.split('/public/')[1]
-          if (path) {
-            await supabase.storage.from('media').remove([path])
-          }
-        }
-      }
-
-      // Then delete the memory (this will cascade delete media records)
-      const { error } = await supabase
-        .from('memories')
-        .delete()
-        .eq('id', memoryId)
-
+      const { error } = await supabase.auth.signOut()
       if (error) throw error
-
-      // Update local state
-      setMemories(memories.filter(m => m.id !== memoryId))
-    } catch (error) {
-      console.error('Error deleting memory:', error)
-      alert('Failed to delete memory. Please try again.')
-    } finally {
-      setIsDeleting(null)
+      router.push('/login')
+    } catch (err) {
+      console.error('Error signing out:', err)
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Loading...</h1>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="space-y-4 text-center">
+          <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-800 rounded-full animate-spin mx-auto" />
+          <div className="text-gray-600 font-light">Loading your memories...</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push('/admin/new')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Add Memory
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              Sign Out
-            </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top Navigation Bar */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-light text-gray-800">Admin Dashboard</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/admin/new"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Memory
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Total Memories</div>
+            <div className="text-3xl font-light text-gray-800">{memories.length}</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">Latest Memory</div>
+            <div className="text-3xl font-light text-gray-800">
+              {memories.length > 0 ? formatDate(memories[0].date) : '-'}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="text-sm font-medium text-gray-500 mb-1">First Memory</div>
+            <div className="text-3xl font-light text-gray-800">
+              {memories.length > 0 ? formatDate(memories[memories.length - 1].date) : '-'}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Media Count
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created At
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+        {/* Memories List */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-800">All Memories</h2>
+          </div>
+          
+          {memories.length === 0 ? (
+            <div className="text-center py-12">
+              <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="mt-4 text-gray-500 font-light">No memories yet. Create your first one!</p>
+              <Link
+                href="/admin/new"
+                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Your First Memory
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-200">
               {memories.map((memory) => (
-                <tr key={memory.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(memory.date), 'MMM d, yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {memory.title}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {memory.location}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {memory.media?.length || 0}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(memory.created_at), 'MMM d, yyyy h:mm a')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button
-                      onClick={() => handleDelete(memory.id)}
-                      disabled={isDeleting === memory.id}
-                      className={`text-red-600 hover:text-red-900 focus:outline-none ${
-                        isDeleting === memory.id ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {isDeleting === memory.id ? (
-                        <span className="inline-flex items-center">
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <div key={memory.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">
+                        {memory.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-2">
+                        {memory.description}
+                      </p>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center text-sm text-gray-500">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          Deleting...
-                        </span>
-                      ) : (
-                        'Delete'
-                      )}
-                    </button>
-                  </td>
-                </tr>
+                          {formatDate(memory.date)}
+                        </div>
+                        {memory.location && (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {memory.location}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4 flex-shrink-0">
+                      <Link
+                        href={`/admin/edit/${memory.id}`}
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   )
 } 

@@ -1,5 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/utils/supabase'
 import { Button } from '@/components/ui/button'
 import { LayoutDashboard, Image as ImageIcon, Settings, LogOut } from 'lucide-react'
 import Link from 'next/link'
@@ -10,7 +13,39 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
   const pathname = usePathname()
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) throw error
+        
+        if (!session) {
+          router.push('/login')
+          return
+        }
+        
+        setIsLoading(false)
+      } catch (err) {
+        console.error('Auth error:', err)
+        router.push('/login')
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white p-4 flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen">

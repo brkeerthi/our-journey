@@ -3,18 +3,19 @@
 import { useState } from 'react'
 import Image, { ImageProps } from 'next/image'
 
-const ImageWithFallback = (props: ImageProps) => {
-  const { alt, src, ...rest } = props
+export interface ImageWithFallbackProps extends Omit<ImageProps, 'src'> {
+  src: string
+}
+
+export default function ImageWithFallback({ src, alt, ...props }: ImageWithFallbackProps) {
   const [error, setError] = useState(false)
 
   return (
     <Image
-      {...rest}
+      {...props}
       src={error ? '/placeholder.svg' : src}
       alt={alt}
       onError={() => setError(true)}
     />
   )
 }
-
-export default ImageWithFallback
