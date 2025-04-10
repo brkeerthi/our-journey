@@ -17,7 +17,7 @@ const getStorageUrl = (path: string) => {
   if (path.startsWith('http')) {
     return path
   }
-  
+
   // Construct the full URL using the bucket name and path
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/memories/${path}`
 }
