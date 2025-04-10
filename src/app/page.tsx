@@ -1,9 +1,9 @@
 'use client'
 
-import { createClient } from '@supabase/supabase-js'
 import { motion, AnimatePresence, useTransform, useMotionValue } from 'framer-motion'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +34,7 @@ export default function Home() {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const titleOpacity = useTransform(
@@ -44,35 +45,23 @@ export default function Home() {
 
   useEffect(() => {
     const fetchMemories = async () => {
-      // First, fetch all memories
-      const { data: memoriesData, error: memoriesError } = await supabase
-        .from('memories')
-        .select('*')
-        .order('created_at', { ascending: true })
+      try {
+        console.log('Fetching memories from API...')
+        const response = await fetch('/api/memories')
+        const data = await response.json()
 
-      if (memoriesError) {
-        console.error('Error fetching memories:', memoriesError)
-        return
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch memories')
+        }
+
+        if (data.memories) {
+          console.log('Memories fetched:', data.memories.length)
+          setMemories(data.memories)
+        }
+      } catch (error) {
+        console.error('Error fetching memories:', error)
+        setError(error instanceof Error ? error.message : 'Failed to fetch memories')
       }
-
-      // Then, fetch all media
-      const { data: mediaData, error: mediaError } = await supabase
-        .from('media')
-        .select('*')
-        .order('order_index', { ascending: true })
-
-      if (mediaError) {
-        console.error('Error fetching media:', mediaError)
-        return
-      }
-
-      // Combine memories with their media
-      const memoriesWithMedia = memoriesData.map(memory => ({
-        ...memory,
-        media: mediaData.filter((m: MediaItem) => m.memory_id === memory.id) || []
-      }))
-
-      setMemories(memoriesWithMedia)
     }
 
     fetchMemories()
