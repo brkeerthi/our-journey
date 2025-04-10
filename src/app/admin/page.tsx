@@ -32,10 +32,6 @@ export default function AdminPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  useEffect(() => {
-    fetchMemories()
-  }, [])
-
   const fetchMemories = async () => {
     try {
       const { data: memoriesData, error: memoriesError } = await supabase
@@ -59,6 +55,10 @@ export default function AdminPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchMemories()
+  }, [fetchMemories])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
