@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -24,8 +24,9 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-          response.cookies.delete({
+          response.cookies.set({
             name,
+            value: '',
             ...options,
           })
         },
@@ -35,16 +36,22 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // If the user is not signed in and the current path is admin, redirect to login
-  if (!session && request.nextUrl.pathname.startsWith('/admin')) {
-    const redirectUrl = new URL('/admin/login', request.url)
-    return NextResponse.redirect(redirectUrl)
-  }
+  // If accessing admin pages
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    // Allow access to login page when not authenticated
+    if (request.nextUrl.pathname === '/admin/login') {
+      if (session) {
+        // If already logged in, redirect to admin dashboard
+        return NextResponse.redirect(new URL('/admin', request.url))
+      }
+      // Allow access to login page
+      return response
+    }
 
-  // If the user is signed in and trying to access login, redirect to admin
-  if (session && request.nextUrl.pathname === '/admin/login') {
-    const redirectUrl = new URL('/admin', request.url)
-    return NextResponse.redirect(redirectUrl)
+    // For all other admin routes, require authentication
+    if (!session) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
   }
 
   return response

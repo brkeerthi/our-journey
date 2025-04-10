@@ -34,7 +34,6 @@ export default function Home() {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const titleOpacity = useTransform(
@@ -60,7 +59,6 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error fetching memories:', error)
-        setError(error instanceof Error ? error.message : 'Failed to fetch memories')
       }
     }
 
