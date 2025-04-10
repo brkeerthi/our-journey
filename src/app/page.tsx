@@ -277,21 +277,9 @@ export default function Home() {
                             
                             {/* Card Content */}
                             <div className="flex-1 p-6 flex flex-col items-center justify-center">
-                              {memory.media && memory.media[0] && (
-                                <div className="relative w-full h-full group">
-                                  <ImageWithFallback
-                                    src={getStorageUrl(memory.media[0].url)}
-                                    alt={memory.title}
-                                    fill
-                                    className="object-cover rounded-lg"
-                                  />
-                                  <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center rounded-lg">
-                                    <p className="text-white text-center px-4 py-2">
-                                      {memory.description}
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
+                              <p className="text-gray-600 text-center font-light leading-relaxed">
+                                {memory.description}
+                              </p>
                             </div>
                           </div>
                         </div>
