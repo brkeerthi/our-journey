@@ -18,8 +18,6 @@ interface Memory {
 
 export default function AdminPage() {
   const [memories, setMemories] = useState<Memory[]>([])
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [uploading, setUploading] = useState(false)
   const supabase = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -46,12 +44,6 @@ export default function AdminPage() {
 
     fetchMemories()
   }, [supabase, router])
-
-  useEffect(() => {
-    if (selectedFiles.length > 0) {
-      console.log('Selected files:', selectedFiles)
-    }
-  }, [selectedFiles])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

@@ -50,7 +50,7 @@ export default function AddMemoryForm() {
         const fileName = `${Date.now()}.${fileExt}`
         
         // Upload the file to Supabase storage
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('memories')
           .upload(`images/${fileName}`, imageFile, {
             cacheControl: '3600',
