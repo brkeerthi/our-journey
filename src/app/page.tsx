@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
 import { formatDate } from '@/utils/date'
 import { Memory, MemoryWithOptionalMedia } from '@/types'
 import ImageWithFallback from '@/components/ImageWithFallback'
@@ -21,40 +21,19 @@ const getStorageUrl = (path: string) => {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/memories/${path}`
 }
 
-const loveQuotes = [
-  "Every day with you is a new adventure I can't wait to begin.",
-  "You're not just my love, you're my best friend and soulmate.",
-  "Your smile lights up my world in ways nothing else can.",
-  "With you, every moment becomes a precious memory.",
-  "You make my heart skip a beat, today and always.",
-]
-
-const FloatingHeart = ({ delay = 0 }) => (
-  <motion.div
-    className="absolute text-rose-500 opacity-80"
-    initial={{ y: "100vh", x: Math.random() * 100 - 50 }}
-    animate={{
-      y: "-100vh",
-      x: Math.random() * 200 - 100,
-    }}
-    transition={{
-      duration: 10,
-      repeat: Infinity,
-      delay,
-      ease: "linear"
-    }}
-  >
-    ❤️
-  </motion.div>
-)
-
 export default function Home() {
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [memories, setMemories] = useState<MemoryWithOptionalMedia[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentQuote, setCurrentQuote] = useState(0)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const scrollProgress = useMotionValue(0)
+  const titleOpacity = useTransform(
+    scrollProgress,
+    [0, 50], // Input range (0% to 50% scroll)
+    [1, 0]   // Output range (fully visible to invisible)
+  )
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -85,12 +64,14 @@ export default function Home() {
     fetchMemories()
   }, [])
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentQuote((prev) => (prev + 1) % loveQuotes.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, clientWidth } = scrollContainerRef.current
+      const firstMemoryPosition = clientWidth * 0.33 // 33vw from left where memories start
+      const progress = Math.min(100, Math.max(0, (scrollLeft / firstMemoryPosition) * 50))
+      scrollProgress.set(progress)
+    }
+  }
 
   // Function to ensure memory has media before setting it as selected
   const handleSelectMemory = (memory: MemoryWithOptionalMedia) => {
@@ -131,118 +112,221 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 to-white relative overflow-hidden">
-      {/* Floating Hearts */}
-      {[...Array(10)].map((_, i) => (
-        <FloatingHeart key={i} delay={i * 2} />
-      ))}
-
-      {/* Welcome Message */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-center py-12 px-4"
-      >
-        <h1 className="font-serif text-4xl md:text-5xl text-gray-800 mb-4">
-          Our Beautiful Journey Together
-        </h1>
-        <AnimatePresence mode="wait">
-          <motion.p
-            key={currentQuote}
+    <div className="h-screen overflow-hidden bg-white">
+      {/* Grain Overlay */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.015] bg-noise" />
+      
+      <div className="h-full flex relative">
+        {/* Title Section */}
+        <motion.div 
+          className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+          style={{ opacity: titleOpacity }}
+          initial={{ opacity: 1 }}
+        >
+          <motion.h1 
+            className="text-[64px] leading-none tracking-[-0.02em] font-light text-transparent bg-clip-text bg-gradient-to-b from-gray-900 to-gray-400"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="text-lg md:text-xl text-gray-600 italic"
+            transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {loveQuotes[currentQuote]}
-          </motion.p>
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Memory Counter */}
-      <div className="text-center mb-8">
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="inline-block bg-white rounded-full px-6 py-3 shadow-lg"
-        >
-          <span className="text-gray-600">Our Journey Together: </span>
-          <span className="text-rose-500 font-semibold">{memories.length} Beautiful Memories</span>
+            KEERTHI<br />&<br />RAKSHITHA
+          </motion.h1>
         </motion.div>
-      </div>
 
-      {/* Memory Grid */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {memories.map((memory) => (
-            <motion.div
-              key={memory.id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-2xl"
-              onClick={() => handleSelectMemory(memory)}
-            >
-              {memory.media && memory.media[0] && (
-                <div className="relative h-64 w-full">
-                  <ImageWithFallback
-                    src={getStorageUrl(memory.media[0].url)}
-                    alt={memory.title}
-                    fill
-                    className="object-cover"
-                  />
-                  {memory.media[0].type === 'video' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        className="w-16 h-16 flex items-center justify-center rounded-full bg-white bg-opacity-80"
+        {/* Timeline Section */}
+        <div className="w-full flex items-center">
+          <div 
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory h-full items-center min-w-0 pl-[33vw]"
+          >
+            <div className="flex gap-24 pr-24">
+              {memories.map((memory, index) => (
+                <motion.div
+                  key={memory.id}
+                  initial={{ opacity: 0, x: 50 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  className="flex-none snap-center relative"
+                >
+                  <div className="w-[250px] flex flex-col items-center">
+                    {memory.media && memory.media.length > 0 ? (
+                      <motion.div 
+                        className="relative h-[400px] cursor-pointer perspective-1000"
+                        whileHover="hover"
+                        initial="initial"
+                        animate="initial"
+                        onClick={() => handleSelectMemory(memory)}
                       >
-                        <svg className="w-8 h-8 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                        </svg>
+                        {/* Background Cards - Third Layer */}
+                        {memory.media.length > 2 && (
+                          <motion.div 
+                            className="absolute top-4 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_8px_16px_-8px_rgba(0,0,0,0.3)] origin-top overflow-hidden"
+                            variants={{
+                              initial: { rotate: -8, y: 0, scale: 0.95, x: "-52%" },
+                              hover: { 
+                                rotate: -12, 
+                                y: 24,
+                                scale: 0.9,
+                                x: "-55%",
+                                transition: { delay: 0.1, duration: 0.5 }
+                              }
+                            }}
+                          >
+                            <div className="relative w-full h-full">
+                              <ImageWithFallback
+                                src={getStorageUrl(memory.media[2].url)}
+                                alt={memory.title}
+                                width={800}
+                                height={1000}
+                                className="w-full h-full object-cover transition-all duration-500 group-hover:filter-none filter grayscale"
+                                unoptimized
+                                quality={85}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* Background Cards - Second Layer */}
+                        {memory.media.length > 1 && (
+                          <motion.div 
+                            className="absolute top-2 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_12px_20px_-8px_rgba(0,0,0,0.3)] origin-top overflow-hidden"
+                            variants={{
+                              initial: { rotate: 4, y: 0, scale: 0.98, x: "-48%" },
+                              hover: { 
+                                rotate: 8, 
+                                y: 16,
+                                scale: 0.95,
+                                x: "-45%",
+                                transition: { delay: 0.2, duration: 0.5 }
+                              }
+                            }}
+                          >
+                            <div className="relative w-full h-full">
+                              <ImageWithFallback
+                                src={getStorageUrl(memory.media[1].url)}
+                                alt={memory.title}
+                                width={800}
+                                height={1000}
+                                className="w-full h-full object-cover transition-all duration-500 group-hover:filter-none filter grayscale"
+                                unoptimized
+                                quality={85}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                        
+                        {/* Main Image Card */}
+                        <motion.div 
+                          className="absolute top-0 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_16px_24px_-8px_rgba(0,0,0,0.3)] overflow-hidden group transform-gpu"
+                          variants={{
+                            initial: { scale: 1, y: 0, rotate: 0, x: "-50%" },
+                            hover: { 
+                              scale: 1.15,
+                              y: -8,
+                              rotate: -2,
+                              x: "-50%",
+                              transition: { 
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 20,
+                                mass: 0.8
+                              }
+                            }
+                          }}
+                        >
+                          <div className="relative w-full h-full">
+                            {memory.media[0].type === 'video' ? (
+                              <video
+                                src={getStorageUrl(memory.media[0].url)}
+                                className="w-full h-full object-cover transition-all duration-500 group-hover:filter-none filter grayscale"
+                                controls={false}
+                                playsInline
+                                muted
+                                loop
+                              />
+                            ) : (
+                              <ImageWithFallback
+                                src={getStorageUrl(memory.media[0].url)}
+                                alt={memory.title}
+                                width={800}
+                                height={1000}
+                                className="w-full h-full object-cover transition-all duration-500 group-hover:filter-none filter grayscale"
+                                unoptimized
+                                quality={85}
+                                priority={index < 4}
+                              />
+                            )}
+                          </div>
+                        </motion.div>
+
+                        {/* Connecting Line */}
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[1px] h-[60px] bg-gray-300" />
                       </motion.div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-semibold text-gray-800">{memory.title}</h3>
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="text-rose-500 hover:text-rose-600 focus:outline-none"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      // You can add functionality to save favorites later
-                    }}
-                  >
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                    </svg>
-                  </motion.button>
-                </div>
-                <div className="flex items-center text-gray-500 text-sm mb-4">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {formatDate(memory.date)}
-                  {memory.location && (
-                    <>
-                      <svg className="w-4 h-4 ml-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      {memory.location}
-                    </>
-                  )}
-                </div>
-                {memory.description && (
-                  <p className="text-gray-600 line-clamp-3">{memory.description}</p>
-                )}
-              </div>
-            </motion.div>
-          ))}
+                    ) : (
+                      // Card UI for memories without media
+                      <div className="relative h-[400px]">
+                        <div className="w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_8px_16px_-8px_rgba(0,0,0,0.2)] overflow-hidden">
+                          <div className="h-full flex flex-col">
+                            {/* Card Header with Gradient */}
+                            <div className="h-16 bg-gradient-to-r from-gray-100 to-gray-50 flex items-center justify-center">
+                              <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+                                <span className="text-gray-400">✍️</span>
+                              </div>
+                            </div>
+                            
+                            {/* Card Content */}
+                            <div className="flex-1 p-6 flex flex-col items-center justify-center">
+                              <h3 className="text-lg font-light text-gray-800 mb-2 text-center">
+                                {memory.title}
+                              </h3>
+                              <p className="text-sm text-gray-500 font-light line-clamp-[8] leading-relaxed text-center">
+                                {memory.description}
+                              </p>
+                              {memory.location && (
+                                <p className="mt-4 text-xs text-gray-400 font-light">
+                                  {memory.location}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Connecting Line */}
+                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[1px] h-[60px] bg-gray-300" />
+                      </div>
+                    )}
+
+                    {/* Number */}
+                    <motion.p 
+                      className="font-light text-4xl text-gray-300 mb-0.5"
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    >
+                      {String(index + 1).padStart(2, '0')}.
+                    </motion.p>
+
+                    {/* Date */}
+                    <motion.p 
+                      className="font-light text-sm tracking-[0.15em] text-gray-500 mb-2"
+                      whileHover={{ y: -2 }}
+                    >
+                      {formatDate(memory.date)}
+                    </motion.p>
+
+                    {/* Title */}
+                    <motion.h3 
+                      className="text-base font-light tracking-[0.05em] text-center max-w-[90%] text-gray-800"
+                      whileHover={{ y: -2 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    >
+                      {memory.title}
+                    </motion.h3>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
