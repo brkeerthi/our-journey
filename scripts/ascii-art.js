@@ -4,8 +4,8 @@ const showAsciiArt = (mode) => {
   const asciiArt = `
 
   ╭──────────────────────────────────────────────╮
-           Built with ❤️  from Keerthi           
-                to Rakshitha                     
+            Built with ❤️  from Keerthi           
+                   to Rakshitha                     
   ╰──────────────────────────────────────────────╯
 `
 
