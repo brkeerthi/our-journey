@@ -197,11 +197,11 @@ export default function Home() {
       <div className="h-full flex relative">
         {/* Mobile Title Section */}
         <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm">
-          <div className="px-6 py-3 text-center">
+          <div className="px-6 pt-6 pb-2 text-center">
             <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
               Keerthi & Rakshitha&apos;s
             </h1>
-            <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide">
+            <p className="text-xl text-gray-500 mt-0.5 mb-2 font-light tracking-wide">
               Echoes of shared time.
             </p>
           </div>
@@ -323,12 +323,11 @@ export default function Home() {
                         
                         {/* Main Image Card */}
                         <motion.div 
-                          className="absolute top-0 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_16px_24px_-8px_rgba(0,0,0,0.3)] overflow-hidden group transform-gpu"
+                          className="absolute top-0 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_16px_24px_-8px_rgba(0,0,0,0.3)] overflow-hidden group transform-gpu md:hover:-translate-y-2 hover:-translate-y-10 md:z-10 z-20"
                           variants={{
-                            initial: { scale: 1, y: 0, rotate: 0, x: "-50%" },
+                            initial: { scale: 1, rotate: 0, x: "-50%" },
                             hover: { 
                               scale: 1.15,
-                              y: -8,
                               rotate: -2,
                               x: "-50%",
                               transition: { 
