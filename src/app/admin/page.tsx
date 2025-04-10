@@ -7,8 +7,17 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
+interface Memory {
+  id: string
+  title: string
+  description: string
+  location: string | null
+  date: string
+  user_id: string
+}
+
 export default function AdminPage() {
-  const [memories, setMemories] = useState<any[]>([])
+  const [memories, setMemories] = useState<Memory[]>([])
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
   const supabase = createBrowserClient<Database>(
