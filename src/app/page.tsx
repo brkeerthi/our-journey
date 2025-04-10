@@ -112,8 +112,8 @@ export default function Home() {
 
   // Filter memories based on showOnlyMedia toggle
   const filteredMemories = showOnlyMedia 
-    ? memories.filter(memory => !memory.media || memory.media.length === 0)
-    : memories.filter(memory => memory.media && memory.media.length > 0)
+    ? memories // Show all memories when toggle is ON
+    : memories.filter(memory => memory.media && memory.media.length > 0) // Show only media posts when toggle is OFF
 
   // Show login if not authenticated
   if (!isAuthenticated) {
@@ -206,9 +206,9 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
         onClick={() => setShowOnlyMedia(!showOnlyMedia)}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 bg-white/80 backdrop-blur-sm shadow-lg rounded-full px-4 py-2 flex items-center gap-2 hover:bg-white transition-colors duration-200 group md:left-8 md:-translate-x-0"
+        className="fixed bottom-8 right-4 z-30 bg-white/80 backdrop-blur-sm shadow-lg rounded-full px-4 py-2 flex items-center gap-2 hover:bg-white transition-colors duration-200 group md:bottom-6 md:left-8"
       >
-        <span className="text-lg transition-transform duration-200 group-hover:scale-110">📝</span>
+        <span className="text-lg transition-transform duration-200 group-hover:scale-110">✍️</span>
         <div className="h-5 w-9 rounded-full relative bg-gray-200 transition-colors duration-200" style={{ backgroundColor: showOnlyMedia ? '#e5e7eb' : '#d1d5db' }}>
           <motion.div 
             className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-gray-600"
