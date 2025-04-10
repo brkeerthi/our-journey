@@ -1,30 +1,43 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
+interface MediaItem {
+  id: string
+  url: string
+  type: string
+  order_index: number
+}
+
+interface Memory {
+  id: string
+  title: string
+  description: string
+  date: string
+  location: string
+  media: MediaItem[]
+}
+
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-    console.log('Supabase URL:', supabaseUrl?.substring(0, 10) + '...')
-    console.log('Environment variables present:', !!supabaseUrl && !!supabaseKey)
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing environment variables')
-      return NextResponse.json(
-        { error: 'Missing Supabase environment variables' },
-        { status: 500 }
-      )
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
     console.log('Fetching memories and media...')
     
-    // First, fetch all memories
+    // Fetch memories with their media in a single query
     const { data: memories, error: memoriesError } = await supabase
       .from('memories')
-      .select('*')
+      .select(`
+        *,
+        media (
+          id,
+          url,
+          type,
+          order_index
+        )
+      `)
       .order('date', { ascending: false })
 
     if (memoriesError) {
@@ -35,31 +48,17 @@ export async function GET() {
       )
     }
 
-    // Then, fetch all media
-    const { data: mediaData, error: mediaError } = await supabase
-      .from('media')
-      .select('*')
-      .order('order_index', { ascending: true })
-
-    if (mediaError) {
-      console.error('Error fetching media:', mediaError)
-      return NextResponse.json(
-        { error: mediaError.message },
-        { status: 500 }
-      )
-    }
-
-    // Combine memories with their media
-    const memoriesWithMedia = memories.map(memory => ({
+    // Sort media items by order_index for each memory
+    const memoriesWithSortedMedia = (memories as Memory[]).map(memory => ({
       ...memory,
-      media: mediaData.filter(m => m.memory_id === memory.id) || []
+      media: memory.media.sort((a: MediaItem, b: MediaItem) => (a.order_index || 0) - (b.order_index || 0))
     }))
 
-    console.log('Memories fetched:', memoriesWithMedia.length)
-    console.log('Total media items:', mediaData.length)
+    console.log('Memories fetched:', memoriesWithSortedMedia.length)
+    console.log('Sample memory:', memoriesWithSortedMedia[0]?.id)
 
     return NextResponse.json({ 
-      memories: memoriesWithMedia,
+      memories: memoriesWithSortedMedia,
       message: 'Memories fetched successfully',
       timestamp: new Date().toISOString()
     })
