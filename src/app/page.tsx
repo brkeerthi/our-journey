@@ -3,12 +3,6 @@
 import { motion, AnimatePresence, useTransform, useMotionValue } from 'framer-motion'
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 interface MediaItem {
   id: string
@@ -33,7 +27,6 @@ export default function Home() {
   const [memories, setMemories] = useState<Memory[]>([])
   const [selectedMemory, setSelectedMemory] = useState<Memory | null>(null)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
-  const [isDeleting, setIsDeleting] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const scrollProgress = useMotionValue(0)
   const titleOpacity = useTransform(
@@ -73,39 +66,6 @@ export default function Home() {
       // Calculate progress based on first memory card position
       const progress = Math.min(100, Math.max(0, (scrollLeft / firstMemoryPosition) * 50))
       scrollProgress.set(progress)
-    }
-  }
-
-  const clearAllMemories = async () => {
-    if (process.env.NODE_ENV !== 'development') return
-    
-    if (window.confirm('Are you sure you want to delete all memories? This cannot be undone!')) {
-      setIsDeleting(true)
-      try {
-        // First delete all media records
-        const { error: mediaDeleteError } = await supabase
-          .from('media')
-          .delete()
-          .not('id', 'is', null)
-
-        if (mediaDeleteError) throw mediaDeleteError
-
-        // Then delete all memories
-        const { error: memoriesDeleteError } = await supabase
-          .from('memories')
-          .delete()
-          .not('id', 'is', null)
-
-        if (memoriesDeleteError) throw memoriesDeleteError
-
-        setMemories([])
-        alert('All memories have been deleted successfully!')
-      } catch (error) {
-        console.error('Error deleting memories:', error)
-        alert('Error deleting memories. Please check the console for details.')
-      } finally {
-        setIsDeleting(false)
-      }
     }
   }
 
@@ -173,8 +133,8 @@ export default function Home() {
                                 transition: { delay: 0.1, duration: 0.5 }
                               }
                             }}
-                          >
-                            <Image
+        >
+          <Image
                               src={memory.media[2].url}
                               alt={memory.title}
                               fill
@@ -197,8 +157,8 @@ export default function Home() {
                                 transition: { delay: 0.2, duration: 0.5 }
                               }
                             }}
-                          >
-                            <Image
+        >
+          <Image
                               src={memory.media[1].url}
                               alt={memory.title}
                               fill
@@ -324,26 +284,20 @@ export default function Home() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/95 z-50 flex flex-col"
           >
-            {/* Main Content Area */}
-            <div className="flex-1 relative">
-              {/* Scrollable Gallery */}
+            {/* Desktop View (hidden on mobile) */}
+            <div className="hidden md:flex flex-1 relative">
+              {/* Existing desktop gallery code */}
               <div 
                 className="absolute inset-0 flex overflow-x-auto hide-scrollbar snap-x snap-mandatory"
                 onScroll={(e) => {
                   const target = e.currentTarget;
                   const maxScroll = target.scrollWidth - target.clientWidth;
                   const currentScroll = target.scrollLeft;
-                  
-                  // Calculate progress ensuring it reaches 100% at the end
                   const progress = Math.min(100, (currentScroll / maxScroll) * 100);
-                  
-                  // Update progress bar width
                   const progressBar = document.getElementById('progress-bar');
                   if (progressBar) {
                     progressBar.style.width = `${progress}%`;
                   }
-                  
-                  // Calculate current media index more accurately
                   const itemWidth = target.scrollWidth / selectedMemory.media.length;
                   const newIndex = Math.min(
                     Math.round(currentScroll / itemWidth),
@@ -384,7 +338,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Content Overlay */}
+              {/* Desktop Content Overlay */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent h-[40%]">
                 <div className="absolute bottom-0 inset-x-0 pl-12 pr-24 pb-12">
                   <motion.div
@@ -394,7 +348,7 @@ export default function Home() {
                     className="space-y-4"
                   >
                     <p className="text-white/70 text-sm tracking-[0.2em] font-light">
-                      {new Date(selectedMemory.created_at).toLocaleDateString('en-US', {
+                      {new Date(selectedMemory.date).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric'
@@ -425,8 +379,100 @@ export default function Home() {
               </motion.button>
             </div>
 
-            {/* Bottom Controls */}
-            <div className="h-1 bg-white/10">
+            {/* Mobile View (hidden on desktop) */}
+            <div className="md:hidden flex flex-1 relative">
+              {/* Close Button */}
+              <motion.button
+                className="absolute top-4 right-4 text-white text-3xl font-light z-10 bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
+                onClick={() => setSelectedMemory(null)}
+                whileHover={{ scale: 1.1 }}
+              >
+                ×
+              </motion.button>
+
+              {/* Main Content Area */}
+              <div className="w-full h-full flex flex-col items-center justify-center px-4 gap-6">
+                <div className="relative w-full max-w-lg aspect-[4/3] rounded-lg overflow-hidden">
+                  {selectedMemory.media[currentMediaIndex].type === 'video' ? (
+                    <video
+                      src={selectedMemory.media[currentMediaIndex].url}
+                      className="w-full h-full object-contain"
+                      controls
+                      autoPlay
+                    />
+                  ) : (
+                    <Image
+                      src={selectedMemory.media[currentMediaIndex].url}
+                      alt={selectedMemory.title}
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  )}
+                </div>
+
+                {/* Memory Details */}
+                <div className="w-full max-w-lg">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-3"
+                  >
+                    <p className="text-white/70 text-xs tracking-[0.2em] font-light">
+                      {new Date(selectedMemory.date).toLocaleDateString('en-US', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      }).toUpperCase()}
+                    </p>
+                    <h2 className="text-white text-xl font-light tracking-wide">
+                      {selectedMemory.title}
+                    </h2>
+                    <p className="text-white/80 text-sm font-light leading-relaxed">
+                      {selectedMemory.description}
+                    </p>
+                    {selectedMemory.location && (
+                      <p className="text-white/50 text-xs font-light">
+                        {selectedMemory.location}
+                      </p>
+                    )}
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Navigation and Page Count Combined */}
+              {selectedMemory.media.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4">
+                  <motion.button
+                    className={`text-white bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm ${currentMediaIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => currentMediaIndex > 0 && setCurrentMediaIndex(prev => prev - 1)}
+                    whileTap={currentMediaIndex > 0 ? { scale: 0.9 } : {}}
+                    disabled={currentMediaIndex === 0}
+                  >
+                    ←
+                  </motion.button>
+                  
+                  <div className="bg-black/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <p className="text-white/90 text-sm font-light">
+                      {currentMediaIndex + 1} / {selectedMemory.media.length}
+                    </p>
+                  </div>
+
+                  <motion.button
+                    className={`text-white bg-black/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm ${currentMediaIndex === selectedMemory.media.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => currentMediaIndex < selectedMemory.media.length - 1 && setCurrentMediaIndex(prev => prev + 1)}
+                    whileTap={currentMediaIndex < selectedMemory.media.length - 1 ? { scale: 0.9 } : {}}
+                    disabled={currentMediaIndex === selectedMemory.media.length - 1}
+                  >
+                    →
+                  </motion.button>
+                </div>
+              )}
+            </div>
+
+            {/* Progress Bar (desktop only) */}
+            <div className="hidden md:block h-1 bg-white/10">
               <motion.div
                 id="progress-bar"
                 className="h-full bg-white"
@@ -438,28 +484,6 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Development Mode Controls */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-16 right-16 z-50">
-          <motion.button
-            className="bg-red-500/80 text-white px-4 py-2 rounded-full text-sm font-light backdrop-blur-sm hover:bg-red-500 transition-colors flex items-center gap-2"
-            onClick={clearAllMemories}
-            disabled={isDeleting}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {isDeleting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Clear All Memories'
-            )}
-          </motion.button>
-        </div>
-      )}
 
       <style jsx global>{`
         .hide-scrollbar {

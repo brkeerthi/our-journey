@@ -2,7 +2,7 @@
 
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { format } from 'date-fns'
 
 interface MediaItem {
@@ -32,7 +32,7 @@ export default function AdminPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const fetchMemories = async () => {
+  const fetchMemories = useCallback(async () => {
     try {
       const { data: memoriesData, error: memoriesError } = await supabase
         .from('memories')
@@ -54,7 +54,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     fetchMemories()
