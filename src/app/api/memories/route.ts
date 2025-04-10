@@ -1,18 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// Create a single supabase client for interacting with your database
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables')
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 export async function GET() {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return NextResponse.json(
+        { error: 'Missing Supabase environment variables' },
+        { status: 500 }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
     const { data: memories, error } = await supabase
       .from('memories')
       .select('*')
