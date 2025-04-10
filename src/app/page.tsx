@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { formatDate } from '@/utils/date'
 import { Memory, MemoryWithOptionalMedia } from '@/types'
 import ImageWithFallback from '@/components/ImageWithFallback'
@@ -54,13 +54,6 @@ export default function Home() {
   const [memories, setMemories] = useState<MemoryWithOptionalMedia[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const scrollProgress = useMotionValue(0)
-  const titleOpacity = useTransform(
-    scrollProgress,
-    [0, 50], // Input range (0% to 50% scroll)
-    [1, 0]   // Output range (fully visible to invisible)
-  )
   const [currentQuote, setCurrentQuote] = useState(0)
 
   useEffect(() => {
@@ -98,15 +91,6 @@ export default function Home() {
     }, 5000)
     return () => clearInterval(interval)
   }, [])
-
-  const handleScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, clientWidth } = scrollContainerRef.current
-      const firstMemoryPosition = clientWidth * 0.33 // 33vw from left where memories start
-      const progress = Math.min(100, Math.max(0, (scrollLeft / firstMemoryPosition) * 50))
-      scrollProgress.set(progress)
-    }
-  }
 
   // Function to ensure memory has media before setting it as selected
   const handleSelectMemory = (memory: MemoryWithOptionalMedia) => {
