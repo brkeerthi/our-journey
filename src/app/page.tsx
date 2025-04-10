@@ -429,20 +429,20 @@ export default function Home() {
             </div>
 
             {/* Mobile View (hidden on desktop) */}
-            <div className="md:hidden flex flex-1 relative">
+            <div className="md:hidden flex flex-col h-full relative">
               {/* Mobile Content Here */}
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center overflow-hidden">
                 {selectedMemory.media && selectedMemory.media.length > 0 ? (
                   selectedMemory.media[currentMediaIndex]?.type === 'video' ? (
                     <video
                       src={getStorageUrl(selectedMemory.media[currentMediaIndex].url)}
-                      className="max-w-full max-h-[80vh] object-contain"
+                      className="w-full h-full object-contain"
                       controls
                       autoPlay
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                       <ImageWithFallback
                         src={getStorageUrl(selectedMemory.media[currentMediaIndex].url)}
                         alt={selectedMemory.title}
@@ -450,7 +450,7 @@ export default function Home() {
                         height={1080}
                         priority
                         quality={90}
-                        className="w-full h-[calc(100vh-32px)] mt-8 object-contain"
+                        className="w-full h-full object-contain"
                         unoptimized
                       />
                     </div>
@@ -461,21 +461,21 @@ export default function Home() {
               </div>
 
               {/* Mobile Memory Details with Gradient Overlay */}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent h-[35%] pointer-events-none" />
-              <div className="absolute inset-x-0 bottom-16 px-6 z-40">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent h-[40%] pointer-events-none" />
+              <div className="absolute inset-x-0 bottom-20 px-6 z-40">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="space-y-3"
+                  className="space-y-2"
                 >
                   <p className="text-white/70 text-xs tracking-[0.2em] font-light">
                     {formatDate(selectedMemory.date).toUpperCase()}
                   </p>
-                  <h2 className="text-white text-xl font-light tracking-wide">
+                  <h2 className="text-white text-lg font-light tracking-wide line-clamp-1">
                     {selectedMemory.title}
                   </h2>
-                  <p className="text-white/80 text-sm font-light leading-relaxed">
+                  <p className="text-white/80 text-sm font-light leading-relaxed line-clamp-2">
                     {selectedMemory.description}
                   </p>
                   {selectedMemory.location && (
@@ -490,7 +490,7 @@ export default function Home() {
               {selectedMemory.media && selectedMemory.media.length > 1 && (
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
                   <button
-                    className="text-white bg-black/40 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    className="text-white bg-black/40 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -502,14 +502,14 @@ export default function Home() {
                     ←
                   </button>
                   
-                  <div className="bg-black/40 backdrop-blur-sm px-6 py-2 rounded-full">
-                    <p className="text-white/90 text-sm font-light">
+                  <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full">
+                    <p className="text-white/90 text-xs font-light">
                       {currentMediaIndex + 1} / {selectedMemory.media.length}
                     </p>
                   </div>
 
                   <button
-                    className="text-white bg-black/40 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    className="text-white bg-black/40 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -525,7 +525,7 @@ export default function Home() {
 
               {/* Mobile Close Button */}
               <button
-                className="absolute top-4 right-4 text-white text-3xl font-light z-50 bg-black/40 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm"
+                className="absolute top-4 right-4 text-white text-2xl font-light z-50 bg-black/40 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
