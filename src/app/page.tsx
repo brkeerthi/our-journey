@@ -123,14 +123,22 @@ export default function Home() {
           style={{ opacity: titleOpacity }}
           initial={{ opacity: 1 }}
         >
-          <motion.h1 
-            className="text-[64px] leading-none tracking-[-0.02em] font-light text-transparent bg-clip-text bg-gradient-to-b from-gray-900 to-gray-400"
+          <motion.div
+            className="flex flex-col"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            KEERTHI<br />&<br />RAKSHITHA
-          </motion.h1>
+            <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+              Keerthi &
+            </span>
+            <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+              Rakshitha&apos;s
+            </span>
+            <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
+              Echoes of shared time.
+            </span>
+          </motion.div>
         </motion.div>
 
         {/* Timeline Section */}
@@ -268,10 +276,10 @@ export default function Home() {
                       <div className="relative h-[400px]">
                         <div className="w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_8px_16px_-8px_rgba(0,0,0,0.2)] overflow-hidden">
                           <div className="h-full flex flex-col">
-                            {/* Card Header with Gradient */}
+                            {/* Card Header with Emoji */}
                             <div className="h-16 bg-gradient-to-r from-gray-100 to-gray-50 flex items-center justify-center">
                               <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
-                                <span className="text-gray-400">✍️</span>
+                                <span className="text-gray-600">{memory.emoji || '✍️'}</span>
                               </div>
                             </div>
                             

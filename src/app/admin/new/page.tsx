@@ -20,6 +20,7 @@ export default function NewMemoryPage() {
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
+  const [emoji, setEmoji] = useState('✍️')
   const [files, setFiles] = useState<MediaPreview[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,16 +72,17 @@ export default function NewMemoryPage() {
           title,
           description,
           date,
-          location,
-          user_id: user.id,
-          created_at: new Date().toISOString()
+          location: location || null,
+          emoji: emoji || null,
+          created_at: new Date().toISOString(),
+          user_id: user.id
         })
         .select()
         .single()
 
       if (memoryError) {
-        console.error('Memory creation error:', memoryError)
-        throw new Error(memoryError.message)
+        console.error('Memory creation error:', JSON.stringify(memoryError, null, 2))
+        throw new Error(`Memory creation failed: ${memoryError.message}`)
       }
 
       if (!memory) {
@@ -104,7 +106,10 @@ export default function NewMemoryPage() {
               .from('memories')
               .upload(filePath, file.file)
 
-            if (uploadError) throw uploadError
+            if (uploadError) {
+              console.error('Upload error:', JSON.stringify(uploadError, null, 2))
+              throw uploadError
+            }
 
             console.log('File uploaded successfully:', filePath)
 
@@ -112,14 +117,17 @@ export default function NewMemoryPage() {
             const { error: mediaError } = await supabase
               .from('media')
               .insert({
-                memory_id: memory.id,
+                memory_id: memory.id.toString(), // Convert to string to match the type
                 url: filePath,
                 type: file.type,
                 created_at: new Date().toISOString(),
                 user_id: user.id
               })
 
-            if (mediaError) throw mediaError
+            if (mediaError) {
+              console.error('Media record error:', JSON.stringify(mediaError, null, 2))
+              throw mediaError
+            }
 
             console.log('Media record created for:', filePath)
           } catch (err) {
@@ -216,6 +224,21 @@ export default function NewMemoryPage() {
                     className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base"
                     required
                     placeholder="Enter memory title"
+                  />
+                </div>
+
+                {/* Emoji */}
+                <div>
+                  <label htmlFor="emoji" className="block text-sm font-medium text-gray-700 mb-2">
+                    Emoji (for text-only memories)
+                  </label>
+                  <input
+                    type="text"
+                    id="emoji"
+                    value={emoji}
+                    onChange={(e) => setEmoji(e.target.value)}
+                    className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base"
+                    placeholder="Enter an emoji (e.g., ✍️, 💕, 🎉)"
                   />
                 </div>
 

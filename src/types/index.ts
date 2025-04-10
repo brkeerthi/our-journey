@@ -1,19 +1,21 @@
 export interface MediaItem {
-  id: string;
-  memory_id: string;
+  id: number;
+  memory_id: number;
   url: string;
   type: 'image' | 'video';
   created_at: string;
 }
 
 export interface Memory {
-  id: string;
+  id: number;
+  created_at: string;
   title: string;
   description: string;
   date: string;
-  location?: string;
-  created_at: string;
+  location: string | null;
+  emoji: string | null;
   media: MediaItem[];
+  user_id: string;
 }
 
 export interface MemoryWithOptionalMedia extends Omit<Memory, 'media'> {
