@@ -14,7 +14,6 @@ const gilda = Gilda_Display({
   weight: '400',
   subsets: ['latin'],
   variable: '--font-gilda',
-  display: 'swap',
 })
 
 const montserrat = Montserrat({

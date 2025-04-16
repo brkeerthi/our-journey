@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const names = [
@@ -11,52 +11,51 @@ const names = [
 ]
 
 export function AnimatedName() {
-  const [isHovered, setIsHovered] = useState(false)
   const [currentNameIndex, setCurrentNameIndex] = useState(0)
+  const [isHovering, setIsHovering] = useState(false)
+  const intervalRef = useRef<NodeJS.Timeout>()
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined = undefined
-
-    if (isHovered) {
-      // Start cycling through names when hovered
-      interval = setInterval(() => {
-        setCurrentNameIndex((prev) => (prev + 1) % names.length)
-      }, 1200) // Slower name change (1.2 seconds)
-    } else {
-      // Immediately reset to Rakshitha when not hovered
-      setCurrentNameIndex(0)
+  const handleHoverStart = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
     }
-
-    // Cleanup function to clear interval
-    return () => {
-      if (interval) {
-        clearInterval(interval)
-      }
-    }
-  }, [isHovered])
+    setIsHovering(true)
+    intervalRef.current = setInterval(() => {
+      setCurrentNameIndex((prev) => (prev + 1) % names.length)
+    }, 1200)
+  }
 
   const handleHoverEnd = () => {
-    setIsHovered(false)
-    setCurrentNameIndex(0) // Immediately reset to first name
+    setIsHovering(false)
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = undefined
+    }
+    setCurrentNameIndex(0)
   }
 
   return (
     <motion.span
-      onHoverStart={() => setIsHovered(true)}
+      onHoverStart={handleHoverStart}
       onHoverEnd={handleHoverEnd}
-      onMouseLeave={handleHoverEnd}
-      className="inline-block relative cursor-pointer select-none hover:text-pink-600 transition-colors duration-300"
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.3 }}
+      className="inline-block relative cursor-pointer select-none font-gilda"
+      animate={{ 
+        color: isHovering ? '#db2777' : '#1f2937'
+      }}
+      transition={{ duration: 0.6 }}
     >
       <AnimatePresence mode="wait">
         <motion.span
           key={names[currentNameIndex]}
-          initial={{ y: 5, opacity: 0 }}
+          initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -5, opacity: 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className="inline-block"
+          exit={{ y: -10, opacity: 0 }}
+          transition={{ 
+            duration: 0.4,
+            ease: [0.23, 1, 0.32, 1]
+          }}
+          className="inline-block font-gilda"
+          style={{ fontSize: 'inherit', lineHeight: 'inherit', letterSpacing: 'inherit' }}
         >
           {names[currentNameIndex]}
         </motion.span>

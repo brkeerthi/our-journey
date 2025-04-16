@@ -5,6 +5,13 @@ import { useRouter, usePathname } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { LayoutDashboard, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { Gilda_Display } from 'next/font/google'
+
+const gilda = Gilda_Display({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+})
 
 export default function AdminNav({
   children
@@ -54,7 +61,9 @@ export default function AdminNav({
       <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100">
         <div className="flex flex-col h-full">
           <div className="p-6">
-            <h1 className="text-xl font-semibold text-gray-900">Keerthi & Rakshitha&apos;s</h1>
+            <h1 className={`text-xl font-semibold text-gray-900 ${gilda.className}`}>
+              Keerthi & Rakshitha&apos;s
+            </h1>
             <p className="text-sm text-gray-500 mt-1">Admin Dashboard</p>
           </div>
           

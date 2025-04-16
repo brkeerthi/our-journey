@@ -18,6 +18,11 @@ const config: Config = {
           hover: 'var(--accent-hover)',
         },
       },
+      fontFamily: {
+        cormorant: ['var(--font-cormorant)'],
+        gilda: ['var(--font-gilda)'],
+        montserrat: ['var(--font-montserrat)'],
+      },
     },
   },
   plugins: [],

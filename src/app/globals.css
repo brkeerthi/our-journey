@@ -1,4 +1,5 @@
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Gilda+Display&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -198,4 +199,10 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.font-gilda {
+  font-family: 'Gilda Display', serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }

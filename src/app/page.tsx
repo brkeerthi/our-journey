@@ -134,13 +134,13 @@ export default function Home() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm"
+            className="md:hidden fixed top-0 inset-x-0 z-30 bg-white/95 backdrop-blur-sm"
           >
             <div className="px-6 py-3 text-center">
-              <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
+              <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800 font-gilda">
                 Keerthi & <AnimatedName />&apos;s
               </h1>
-              <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide">
+              <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide font-gilda">
                 Echoes of shared time.
               </p>
             </div>
@@ -148,19 +148,19 @@ export default function Home() {
 
           {/* Desktop Title Section */}
           <motion.div 
-            className="fixed left-16 top-1/2 -translate-y-1/2 z-10 hidden md:block"
+            className="fixed left-16 top-1/2 -translate-y-1/2 z-30 hidden md:block"
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
           >
             <motion.div className="flex flex-col">
-              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800 font-gilda">
                 Keerthi &
               </span>
-              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+              <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800 font-gilda">
                 <AnimatedName />&apos;s
               </span>
-              <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
+              <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide font-gilda">
                 Echoes of shared time.
               </span>
             </motion.div>
@@ -176,8 +176,15 @@ export default function Home() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <p className="text-red-500 mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white text-center p-4">
+        <div className="space-y-4">
+          <h1 className="font-gilda text-[2.5rem] text-gray-900 mb-0">
+            Keerthi & <AnimatedName />
+          </h1>
+          <p className="font-gilda text-xl text-gray-600">
+            Echoes of shared time.
+          </p>
+        </div>
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
@@ -223,10 +230,10 @@ export default function Home() {
         {/* Mobile Title Section */}
         <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm">
           <div className="px-6 pt-6 pb-2 text-center">
-            <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
+            <h1 className="text-4xl tracking-[-0.02em] font-light text-gray-800 font-gilda">
               Keerthi & <AnimatedName />&apos;s
             </h1>
-            <p className="text-xl text-gray-500 mt-0.5 mb-2 font-light tracking-wide">
+            <p className="text-2xl text-gray-500 mt-2 font-light tracking-wide font-gilda">
               Echoes of shared time.
             </p>
           </div>
@@ -244,13 +251,13 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+            <span className="text-[60px] leading-tight tracking-[-0.02em] font-light text-gray-800 font-gilda">
               Keerthi &
             </span>
-            <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
+            <span className="text-[60px] leading-tight tracking-[-0.02em] font-light text-gray-800 font-gilda">
               <AnimatedName />&apos;s
             </span>
-            <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
+            <span className="text-3xl text-gray-500 mt-8 font-light tracking-wide font-gilda">
               Echoes of shared time.
             </span>
           </motion.div>
