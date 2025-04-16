@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Memory } from '@/types'
 import { Spinner } from '@/components/ui/spinner'
@@ -13,11 +13,7 @@ export default function AdminPage() {
   const supabase = createClientComponentClient()
   const router = useRouter()
 
-  useEffect(() => {
-    fetchMemories()
-  }, [])
-
-  const fetchMemories = async () => {
+  const fetchMemories = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -39,7 +35,11 @@ export default function AdminPage() {
       console.error('Error:', error)
       setIsLoading(false)
     }
-  }
+  }, [supabase, router])
+
+  useEffect(() => {
+    fetchMemories()
+  }, [fetchMemories])
 
   if (isLoading) {
     return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { LayoutDashboard, LogOut } from 'lucide-react'
@@ -16,16 +16,29 @@ export default function AdminNav({
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClientComponentClient()
 
+  const checkAuth = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user && pathname !== '/admin/login') {
+      router.push('/admin/login')
+    }
+    setIsLoading(false)
+  }, [supabase.auth, router, pathname])
+
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user && pathname !== '/admin/login') {
-        router.push('/admin/login')
-      }
+    checkAuth()
+  }, [checkAuth])
+
+  const handleSignOut = async () => {
+    try {
+      setIsLoading(true)
+      await supabase.auth.signOut()
+      router.push('/admin/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    } finally {
       setIsLoading(false)
     }
-    checkAuth()
-  }, [router, supabase.auth, pathname])
+  }
 
   if (pathname === '/admin/login') {
     return <>{children}</>
@@ -41,7 +54,7 @@ export default function AdminNav({
       <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100">
         <div className="flex flex-col h-full">
           <div className="p-6">
-            <h1 className="text-xl font-semibold text-gray-900">Our Journey</h1>
+            <h1 className="text-xl font-semibold text-gray-900">Keerthi & Rakshitha&apos;s</h1>
             <p className="text-sm text-gray-500 mt-1">Admin Dashboard</p>
           </div>
           
@@ -57,11 +70,11 @@ export default function AdminNav({
 
           <div className="p-4 border-t border-gray-100">
             <button
-              onClick={() => router.push('/admin')}
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg w-full"
+              onClick={handleSignOut}
+              className="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg w-full"
             >
-              <LogOut className="mr-3 h-5 w-5 text-gray-500" />
-              Back to Dashboard
+              <LogOut className="mr-3 h-5 w-5 text-red-500" />
+              Sign Out
             </button>
           </div>
         </div>
