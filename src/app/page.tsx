@@ -8,6 +8,7 @@ import ImageWithFallback from '@/components/ImageWithFallback'
 import { supabase } from '@/utils/supabase'
 import { Spinner } from '@/components/ui/spinner'
 import LoginOverlay from '@/components/LoginOverlay'
+import { AnimatedName } from '@/components/ui/AnimatedName'
 
 // Function to get complete Supabase storage URL
 const getStorageUrl = (path: string) => {
@@ -137,7 +138,7 @@ export default function Home() {
           >
             <div className="px-6 py-3 text-center">
               <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
-                Keerthi & Rakshitha&apos;s
+                Keerthi & <AnimatedName />&apos;s
               </h1>
               <p className="text-xl text-gray-500 mt-0.5 font-light tracking-wide">
                 Echoes of shared time.
@@ -147,7 +148,7 @@ export default function Home() {
 
           {/* Desktop Title Section */}
           <motion.div 
-            className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none hidden md:block"
+            className="fixed left-16 top-1/2 -translate-y-1/2 z-10 hidden md:block"
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
@@ -157,7 +158,7 @@ export default function Home() {
                 Keerthi &
               </span>
               <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
-                Rakshitha&apos;s
+                <AnimatedName />&apos;s
               </span>
               <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
                 Echoes of shared time.
@@ -223,7 +224,7 @@ export default function Home() {
         <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-white/95 backdrop-blur-sm">
           <div className="px-6 pt-6 pb-2 text-center">
             <h1 className="text-3xl tracking-[-0.02em] font-light text-gray-800">
-              Keerthi & Rakshitha&apos;s
+              Keerthi & <AnimatedName />&apos;s
             </h1>
             <p className="text-xl text-gray-500 mt-0.5 mb-2 font-light tracking-wide">
               Echoes of shared time.
@@ -233,7 +234,7 @@ export default function Home() {
 
         {/* Desktop Title Section */}
         <motion.div 
-          className="fixed left-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none hidden md:block"
+          className="fixed left-16 top-1/2 -translate-y-1/2 z-30 hidden md:block"
           style={{ opacity: titleOpacity }}
           initial={{ opacity: 1 }}
         >
@@ -247,7 +248,7 @@ export default function Home() {
               Keerthi &
             </span>
             <span className="text-[56px] leading-tight tracking-[-0.02em] font-light text-gray-800">
-              Rakshitha&apos;s
+              <AnimatedName />&apos;s
             </span>
             <span className="text-2xl text-gray-500 mt-6 font-light tracking-wide">
               Echoes of shared time.
@@ -290,7 +291,7 @@ export default function Home() {
                         {/* Background Cards - Third Layer */}
                         {memory.media.length > 2 && (
                           <motion.div 
-                            className="absolute top-4 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_8px_16px_-8px_rgba(0,0,0,0.3)] origin-top overflow-hidden"
+                            className="absolute top-4 left-1/2 -translate-x-1/2 w-[250px] aspect-[4/5] bg-white rounded-xl shadow-[0_8px_16px_-8px_rgba(0,0,0,0.3)] origin-top overflow-hidden z-10"
                             variants={{
                               initial: { rotate: -8, y: 0, scale: 0.95, x: "-52%" },
                               hover: { 
