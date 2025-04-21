@@ -2,6 +2,16 @@ const { execSync } = require('child_process')
 const { showAsciiArt } = require('./ascii-art')
 const chalk = require('chalk')
 
+console.log(`
+
+  ╭──────────────────────────────────────────────╮
+            Built with ❤️ from Keerthi           
+                  to Rakshitha                     
+  ╰──────────────────────────────────────────────╯
+
+Starting Our Journey in production mode...
+=============================================`)
+
 showAsciiArt('production')
 
 try {

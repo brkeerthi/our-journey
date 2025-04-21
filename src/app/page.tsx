@@ -41,6 +41,21 @@ export default function Home() {
   )
 
   useEffect(() => {
+    // ASCII art for console
+    console.log(`
+    ╭──────────────────────────────────────────────╮
+              Built with ❤️ from Keerthi           
+                    to Rakshitha                     
+    ╰──────────────────────────────────────────────╯
+    `)
+
+    console.log(`
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+    Keerthi & Rakshitha's Echoes of shared time
+    Version: 1.0.0
+    ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+    `)
+
     // Check if it's a hard refresh
     const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
     const isHardRefresh = navEntry?.type === 'reload'
