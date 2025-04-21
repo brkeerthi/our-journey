@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface LoginOverlayProps {
   onAuthenticated: () => void
@@ -7,88 +9,66 @@ interface LoginOverlayProps {
 
 export default function LoginOverlay({ onAuthenticated }: LoginOverlayProps) {
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(false)
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false)
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (password === '26012025') {
-      setError(false)
-      setIsAnimatingOut(true)
-      localStorage.setItem('authenticated', 'true')
-      
-      // Delay the onAuthenticated callback to allow for animation
-      setTimeout(() => {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      if (password === '26012025') {
+        localStorage.setItem('authenticated', 'true')
         onAuthenticated()
-      }, 500)
-    } else {
-      setError(true)
+      } else {
+        setError('Incorrect password')
+      }
+    } catch {
+      setError('Something went wrong')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: isAnimatingOut ? 0 : 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center"
-      >
-        <motion.div
-          initial={{ scale: 1, opacity: 1 }}
-          animate={{ 
-            scale: isAnimatingOut ? 0.9 : 1,
-            opacity: isAnimatingOut ? 0 : 1
-          }}
-          transition={{ type: "spring", duration: 0.5 }}
-          className="w-full max-w-sm p-8"
-        >
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-light tracking-tight text-gray-900">
-                Welcome Back
-              </h2>
-              <p className="text-sm text-gray-500">
-                Please enter the password to continue
-              </p>
-            </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-white z-50 flex items-center justify-center"
+    >
+      <div className="w-full max-w-sm p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-gilda text-gray-900 mb-2">Welcome</h1>
+          <p className="text-gray-600">Enter the password</p>
+        </div>
 
-            <div>
-              <div className="relative">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    setError(false)
-                  }}
-                  className={`block w-full rounded-md border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ${
-                    error ? 'ring-red-300' : 'ring-gray-300'
-                  } placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-gray-600 text-center tracking-[0.2em]`}
-                  placeholder="••••••"
-                />
-              </div>
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-sm text-red-600 text-center"
-                >
-                  Incorrect password
-                </motion.p>
-              )}
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none transition-all text-center tracking-[0.2em]"
+              placeholder="••••••"
+              required
+            />
+          </div>
 
-            <button
-              type="submit"
-              className="flex w-full justify-center rounded-md bg-gray-900 px-4 py-3 text-sm font-light text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-600"
-            >
-              Continue
-            </button>
-          </form>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+          {error && (
+            <p className="text-red-500 text-sm text-center">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors font-gilda"
+          >
+            {isLoading ? 'Loading...' : 'Enter'}
+          </button>
+        </form>
+      </div>
+    </motion.div>
   )
 } 

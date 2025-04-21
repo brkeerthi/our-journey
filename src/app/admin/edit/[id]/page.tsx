@@ -8,6 +8,8 @@ import { Spinner } from '@/components/ui/spinner'
 import ImageWithFallback from '@/components/ImageWithFallback'
 import Link from 'next/link'
 import { use } from 'react'
+import { Memory } from '@/types'
+import Image from 'next/image'
 
 interface MediaPreview {
   file: File
@@ -28,6 +30,7 @@ interface PageProps {
 export default function EditMemoryPage({ params }: PageProps) {
   const { id } = use(params)
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [date, setDate] = useState('')
@@ -56,11 +59,13 @@ export default function EditMemoryPage({ params }: PageProps) {
       if (memoryError) {
         console.error('Error fetching memory:', memoryError)
         setError('Failed to fetch memory details')
+        setIsLoading(false)
         return
       }
 
       if (!memory) {
         setError('Memory not found')
+        setIsLoading(false)
         return
       }
 
@@ -73,6 +78,7 @@ export default function EditMemoryPage({ params }: PageProps) {
         url: m.url,
         type: m.type
       })))
+      setIsLoading(false)
     }
 
     fetchMemory()
@@ -277,145 +283,181 @@ export default function EditMemoryPage({ params }: PageProps) {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-100">
-        <div className="flex flex-col h-full">
-          <div className="p-6">
-            <h1 className="text-xl font-semibold text-gray-900">Our Journey</h1>
-            <p className="text-sm text-gray-500 mt-1">Admin Dashboard</p>
-          </div>
-          
-          <nav className="flex-1 px-4 space-y-1">
-            <Link
-              href="/admin"
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg"
-            >
-              <svg className="mr-3 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Dashboard
-            </Link>
-          </nav>
-
-          <div className="p-4 border-t border-gray-100">
-            <button
-              onClick={() => router.push('/admin')}
-              className="flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg w-full"
-            >
-              <svg className="mr-3 h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner size="lg" />
       </div>
+    )
+  }
 
-      {/* Main content */}
-      <div className="pl-16 w-full">
-        <div className="p-6">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Edit Memory</h2>
-            <p className="mt-1 text-sm text-gray-500">Update your memory details.</p>
-          </div>
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-medium text-gray-900">
+            Keerthi &amp; Rakshitha&apos;s
+          </h1>
+          <h2 className="text-xl text-gray-600 mt-1 tracking-wide">
+            Edit Memory
+          </h2>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-white rounded-xl border border-gray-100 p-6 w-full">
-              <div className="space-y-6">
-                {/* Title */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-100 p-6 w-full">
+            <div className="space-y-6">
+              {/* Title */}
+              <div>
+                <label htmlFor="title" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-sm"
+                  required
+                  placeholder="Enter memory title"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-sm resize-none"
+                  required
+                  placeholder="Describe your memory..."
+                />
+              </div>
+
+              {/* Date and Location */}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                    Title
+                  <label htmlFor="date" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    id="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="location" className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Location
                   </label>
                   <input
                     type="text"
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base"
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-sm"
                     required
-                    placeholder="Enter memory title"
+                    placeholder="Enter location"
                   />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
-                    className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base resize-none"
-                    required
-                    placeholder="Describe your memory..."
-                  />
-                </div>
-
-                {/* Date and Location */}
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      id="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 text-base"
-                      required
-                      placeholder="Enter location"
-                    />
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Existing Media */}
-            {existingMedia.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-100 p-6">
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Existing Media
-                </label>
-                <div className="grid grid-cols-2 gap-4">
-                  {existingMedia.map((media) => (
-                    <div key={media.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
-                      {media.type === 'video' ? (
+          {/* Existing Media */}
+          {existingMedia.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 p-6">
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">
+                Existing Media
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                {existingMedia.map((media) => (
+                  <div key={media.id} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                    {media.type === 'video' ? (
+                      <video
+                        src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
+                        className="w-full h-full object-cover"
+                        controls
+                      />
+                    ) : (
+                      <ImageWithFallback
+                        src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
+                        alt="Memory"
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeExistingMedia(media.id)}
+                      className="absolute top-2 right-2 p-1.5 bg-white bg-opacity-75 text-gray-900 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Media Upload */}
+          <div className="bg-white rounded-xl border border-gray-100 p-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">
+                Add New Media
+              </label>
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+                  ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
+              >
+                <input {...getInputProps()} />
+                <div className="text-gray-600">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="mt-4 text-sm font-medium">Drag and drop files here, or click to select files</p>
+                  <p className="mt-2 text-xs text-gray-500">Images and videos supported</p>
+                </div>
+              </div>
+
+              {/* Preview Grid */}
+              {files.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  {files.map((file, index) => (
+                    <div key={file.preview} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
+                      {file.type === 'video' ? (
                         <video
-                          src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
+                          src={file.preview}
                           className="w-full h-full object-cover"
                           controls
                         />
                       ) : (
                         <ImageWithFallback
-                          src={supabase.storage.from('memories').getPublicUrl(media.url).data.publicUrl}
-                          alt="Memory"
+                          src={file.preview}
+                          alt="Preview"
                           fill
                           className="object-cover"
                         />
                       )}
                       <button
                         type="button"
-                        onClick={() => removeExistingMedia(media.id)}
+                        onClick={() => removeFile(index)}
                         className="absolute top-2 right-2 p-1.5 bg-white bg-opacity-75 text-gray-900 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -425,119 +467,58 @@ export default function EditMemoryPage({ params }: PageProps) {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Media Upload */}
-            <div className="bg-white rounded-xl border border-gray-100 p-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Add New Media
-                </label>
-                <div
-                  {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                    ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}`}
-                >
-                  <input {...getInputProps()} />
-                  <div className="text-gray-600">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      />
-                    </svg>
-                    <p className="mt-4 text-sm font-medium">Drag and drop files here, or click to select files</p>
-                    <p className="mt-2 text-xs text-gray-500">Images and videos supported</p>
-                  </div>
-                </div>
-
-                {/* Preview Grid */}
-                {files.length > 0 && (
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    {files.map((file, index) => (
-                      <div key={file.preview} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
-                        {file.type === 'video' ? (
-                          <video
-                            src={file.preview}
-                            className="w-full h-full object-cover"
-                            controls
-                          />
-                        ) : (
-                          <ImageWithFallback
-                            src={file.preview}
-                            alt="Preview"
-                            fill
-                            className="object-cover"
-                          />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="absolute top-2 right-2 p-1.5 bg-white bg-opacity-75 text-gray-900 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
+          </div>
 
-            {error && (
-              <div className="rounded-lg bg-red-50 p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <p className="text-sm text-red-500">{error}</p>
-                  </div>
+          {error && (
+            <div className="rounded-lg bg-red-50 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-500">{error}</p>
                 </div>
               </div>
-            )}
-
-            <div className="flex justify-between items-center">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? (
-                  <>
-                    <Spinner size="sm" />
-                    <span className="ml-2">Deleting...</span>
-                  </>
-                ) : (
-                  'Delete Memory'
-                )}
-              </button>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Spinner size="sm" />
-                    <span className="ml-2">Saving...</span>
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </button>
             </div>
-          </form>
-        </div>
+          )}
+
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? (
+                <>
+                  <Spinner size="sm" />
+                  <span className="ml-2">Deleting...</span>
+                </>
+              ) : (
+                'Delete Memory'
+              )}
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <Spinner size="sm" />
+                  <span className="ml-2">Saving...</span>
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

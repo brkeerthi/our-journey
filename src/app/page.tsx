@@ -56,17 +56,9 @@ export default function Home() {
     ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
     `)
 
-    // Check if it's a hard refresh
-    const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
-    const isHardRefresh = navEntry?.type === 'reload'
-
-    if (isHardRefresh) {
-      localStorage.removeItem('authenticated')
-      setIsAuthenticated(false)
-    } else {
-      const authenticated = localStorage.getItem('authenticated') === 'true'
-      setIsAuthenticated(authenticated)
-    }
+    // Clear any existing authentication
+    localStorage.removeItem('authenticated')
+    setIsAuthenticated(false)
   }, [])
 
   useEffect(() => {
