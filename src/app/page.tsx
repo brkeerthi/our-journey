@@ -122,7 +122,7 @@ export default function Home() {
   }
 
   if (isLoading || isAnimatingIn) {
-    return (
+  return (
       <div className="h-screen overflow-hidden bg-white">
         <motion.div 
           initial={{ opacity: 0 }}
@@ -607,10 +607,10 @@ export default function Home() {
                   <p className="text-white/70 text-xs tracking-[0.2em] font-light">
                     {formatDate(selectedMemory.date).toUpperCase()}
                   </p>
-                  <h2 className="text-white text-lg font-light tracking-wide line-clamp-1">
+                  <h2 className="text-white text-lg font-light tracking-wide">
                     {selectedMemory.title}
                   </h2>
-                  <p className="text-white/80 text-sm font-light leading-relaxed line-clamp-2">
+                  <p className="text-white/80 text-sm font-light leading-relaxed">
                     {selectedMemory.description}
                   </p>
                   {selectedMemory.location && (
@@ -684,6 +684,29 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Memory List */}
+      <div className="md:hidden">
+        <div className="space-y-4 px-4">
+          {memories.map((memory) => (
+            <div
+              key={memory.id}
+              className="bg-white rounded-xl shadow-sm p-4 cursor-pointer"
+              onClick={() => handleSelectMemory(memory)}
+            >
+              <h3 className="text-lg font-medium text-gray-900 font-gilda">
+                {memory.title}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                {memory.date} • {memory.location}
+              </p>
+              <p className="text-gray-600 mt-2">
+                {memory.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       <style jsx global>{`
         .hide-scrollbar {

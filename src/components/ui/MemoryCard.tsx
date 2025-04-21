@@ -42,8 +42,10 @@ export default function MemoryCard({ memory, onClick }: MemoryCardProps) {
       
       <div className="p-4">
         <h3 className="text-xl font-semibold text-gray-800 mb-2">{memory.title}</h3>
-        <p className="text-gray-600 text-sm mb-2">{memory.date}</p>
-        <p className="text-gray-700 line-clamp-2">{memory.description}</p>
+        <p className="text-sm text-gray-500 mt-1">
+          {memory.date} • {memory.location}
+        </p>
+        <p className="text-gray-700">{memory.description}</p>
       </div>
     </motion.div>
   )

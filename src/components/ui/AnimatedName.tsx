@@ -13,7 +13,7 @@ const names = [
 export function AnimatedName() {
   const [currentNameIndex, setCurrentNameIndex] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout>()
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const handleHoverStart = () => {
     if (intervalRef.current) {
@@ -29,7 +29,7 @@ export function AnimatedName() {
     setIsHovering(false)
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
-      intervalRef.current = undefined
+      intervalRef.current = null
     }
     setCurrentNameIndex(0)
   }
