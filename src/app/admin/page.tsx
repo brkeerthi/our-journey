@@ -19,6 +19,16 @@ export default function AdminPage() {
   const supabase = createClientComponentClient()
   const router = useRouter()
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setMemories([]) // Clear cached data
+      router.push('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
   const fetchMemories = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -58,13 +68,21 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-medium text-gray-900">
-            Keerthi &amp; Rakshitha&apos;s
-          </h1>
-          <h2 className="text-xl text-gray-600 mt-1 tracking-wide">
-            Admin Dashboard
-          </h2>
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-3xl font-medium text-gray-900">
+              Keerthi &amp; Rakshitha&apos;s
+            </h1>
+            <h2 className="text-xl text-gray-600 mt-1 tracking-wide">
+              Memories dashboard
+            </h2>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
+          >
+            Sign out
+          </button>
         </div>
 
         {/* Summary Cards */}
